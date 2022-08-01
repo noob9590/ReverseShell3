@@ -36,7 +36,6 @@ private:
 	bool SendMsg(SOCKET, std::string, size_t);
 	int Recv(SOCKET, void*, int);
 	bool ReadSize(SOCKET, unsigned long*);
-	bool RecvAll(SOCKET);
 	bool RecvMsg(SOCKET sock);
 
 public:

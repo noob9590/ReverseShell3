@@ -166,44 +166,14 @@ int Server::Recv(SOCKET sock, void* data, int data_size)
 		dbuf += recved;
 
 	} while (data_size > total_recved);
-	std::cout << total_recved << std::endl;
 	return total_recved;
 }
 
 bool Server::ReadSize(SOCKET sock, unsigned long* size)
 {
-	if (!Server::Recv(sock, static_cast<void*>(size), sizeof(size)))
+	if (!Server::Recv(sock, static_cast<void*>(size), sizeof(*size))) // might need to change it
 		return false;
 	*size = ntohl(*size);
-	return true;
-}
-
-bool Server::RecvAll(SOCKET sock)
-{
-	unsigned long size;
-	if (!Server::ReadSize(sock, &size))
-	{
-		//handle the error
-		return false;
-	}
-	
-	size_t total_recv = 0;
-	do
-	{
-		int sz_to_read = min(512, size); // might change the size
-		std::vector<char> dbuf(sz_to_read + 1, 0); // might change the size
-
-		int recved = Server::Recv(sock, static_cast<void*>(dbuf.data()), sz_to_read);
-		if (!recved)
-		{
-			//handle the error
-			return false;
-		}
-		size -= recved;
-		std::cout << dbuf.data();
-	} while (size > 0);
-
-	std::cout << std::endl;
 	return true;
 }
 
@@ -215,26 +185,28 @@ bool Server::RecvMsg(SOCKET sock)
 		//handle the error
 		return false;
 	}
-	int num = 0;
-	char dbuf[BUF_SIZE + 1];
+	
+	size_t total_recv = 0;
 	do
 	{
-		int sz_to_read = min(512, size);
-		ZeroMemory(dbuf, BUF_SIZE + 1);
-		num = Server::Recv(sock, static_cast<void*>(dbuf), sz_to_read);
-		if (!num)
+		int sz_to_read = min(BUF_SIZE - 1, size); // might change the size
+		std::vector<char> dbuf(BUF_SIZE, 0);
+
+		int recved = Server::Recv(sock, static_cast<void*>(dbuf.data()), sz_to_read);
+		if (!recved)
 		{
-			fprintf(stderr, "Recv error: %d\n", WSAGetLastError());
+			//handle the error
 			return false;
 		}
-		size -= num;
-		std::cout << dbuf;
+		size -= recved;
 
+		std::cout << dbuf.data();
 	} while (size > 0);
 
 	std::cout << std::endl;
 	return true;
 }
+
 
 void Server::CommandAndControl(std::string& cmd, size_t size)
 {
