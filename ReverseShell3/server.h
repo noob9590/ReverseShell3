@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
+#include <optional>
+#include <vector>
 #pragma comment (lib, "Ws2_32.lib")
 
 #define BUF_SIZE 512
@@ -29,8 +31,13 @@ private:
 
 	void CreateSocket();
 	void Bind();
-	bool SendAll(SOCKET, const void*, size_t);
-	bool ReceiveAll(SOCKET, void*, size_t);  
+
+	int Send(SOCKET, const void*, size_t);
+	bool SendMsg(SOCKET, std::string, size_t);
+	int Recv(SOCKET, void*, int);
+	bool ReadSize(SOCKET, unsigned long*);
+	bool RecvAll(SOCKET);
+	bool RecvMsg(SOCKET sock);
 
 public:
 	Server(PCSTR port);
