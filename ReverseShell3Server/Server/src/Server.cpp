@@ -80,33 +80,8 @@ std::tuple<std::string, int> Server::GetConnectionInfo()
 	return {IPStr, port};
 }
 
-//bool Server::SendAll(SOCKET sock, const void* data, size_t data_size)
-//{
-//	//const unsigned char* data_ptr = static_cast<const unsigned char*>(data);
-//
-//	const char* data_ptr = static_cast<const char*>(data);
-//	char dbuf[BUF_SIZE];
-//	int b_sent;
-//
-//	while (data_size > 0)
-//	{
-//		ZeroMemory(dbuf, BUF_SIZE);
-//		memcpy(dbuf, data_ptr, data_size);
-//
-//		b_sent = send(sock, dbuf, data_size, 0);
-//		if (b_sent == SOCKET_ERROR)
-//		{
-//			fprintf(stderr, "SendAll error: %d\n", WSAGetLastError());
-//			return false;
-//		}
-//
-//		data_ptr += b_sent;
-//		data_size -= b_sent;
-//	}
-//	return true;
-//}
 
-int Server::Send(SOCKET sock, const void* data, size_t data_size)
+int Server::Send(SOCKET sock, const void* data, int data_size)
 {
 	int sent;
 	int total_sent = 0;
@@ -115,27 +90,38 @@ int Server::Send(SOCKET sock, const void* data, size_t data_size)
 	{
 		sent = send(sock, dbuf, data_size, 0);
 		if (sent == SOCKET_ERROR)
-			return -1;
+			return 0;
 
 		dbuf += sent;
-		data_size -= sent;
 		total_sent += sent;
 
-	} while (data_size > 0);
+	} while (data_size > total_sent);
 	return total_sent;
 }
 
-bool Server::SendMsg(SOCKET sock, std::string msg, size_t size)
+bool Server::SendSize(SOCKET sock, unsigned long size)
 {
-	size_t total_sent = 0;
+	size = htonl(size);
+	if (!Server::Send(sock, static_cast<void*>(&size), sizeof(size)))
+	{
+		return false;
+	}
+	return true;
+}
+
+bool Server::SendMsg(SOCKET sock, std::string msg, int size)
+{
+	if (!Server::SendSize(sock, size))
+	{
+		// handle the error
+		return false;
+	}
+	int total_sent = 0;
 	const char* msg_ptr = msg.c_str();
-	char dbuf[BUF_SIZE];
 	do
 	{
-		int to_send = min(size - total_sent, BUF_SIZE);
-		ZeroMemory(dbuf, BUF_SIZE);
-		memcpy(dbuf, msg_ptr, to_send);
-		int sent = Send(sock, static_cast<const void*>(dbuf), to_send);
+		int sz_to_send = min(BUF_SIZE, size);
+		int sent = Send(sock, static_cast<const void*>(msg_ptr), sz_to_send);
 		if (sent == -1)
 		{
 			fprintf(stderr, "Send error: %d\n", WSAGetLastError());
@@ -143,8 +129,9 @@ bool Server::SendMsg(SOCKET sock, std::string msg, size_t size)
 		}
 		total_sent += sent;
 		msg_ptr += sent;
+		size -= sent;
 		
-	} while (size > total_sent);
+	} while (size > 0);
 	return true;
 }
 

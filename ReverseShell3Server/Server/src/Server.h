@@ -32,8 +32,9 @@ private:
 	void CreateSocket();
 	void Bind();
 
-	int Send(SOCKET, const void*, size_t);
-	bool SendMsg(SOCKET, std::string, size_t);
+	int Send(SOCKET, const void*, int);
+	bool SendSize(SOCKET, unsigned long);
+	bool SendMsg(SOCKET, std::string, int);
 	int Recv(SOCKET, void*, int);
 	bool ReadSize(SOCKET, unsigned long*);
 	bool RecvMsg(SOCKET sock);
