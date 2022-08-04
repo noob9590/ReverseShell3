@@ -207,12 +207,13 @@ void Server::CommandAndControl(std::string& cmd, size_t size)
 	}
 	else
 	{
-		if (!Server::SendMsg(this->sockClient, cmd, size))
+		if (!Server::RecvMsg(this->sockClient))
 		{
 			Server::~Server();
 			exit(1);
 		}
-		if (!Server::RecvMsg(this->sockClient))
+
+		if (!Server::SendMsg(this->sockClient, cmd, size))
 		{
 			Server::~Server();
 			exit(1);

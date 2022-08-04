@@ -1,0 +1,164 @@
+#include "Socket.h"
+
+namespace MNet
+{
+	bool Socket::InitGetAddrInfo(PCSTR ip, const PCSTR port, struct addrinfo*& StrcConnect)
+	{
+		int status;
+		status = getaddrinfo(ip, port, &connType, &StrcConnect);
+		if (status != 0)
+		{
+			std::cerr << "InitGetAddrInfo Error." << std::endl;
+			return false;
+		}
+		return true;
+	}
+
+	Socket::Socket(int addressFamily, int sockType, int sockProto)
+	{
+		ZeroMemory(&connType, sizeof(connType));
+		connType.ai_family = addressFamily;
+		connType.ai_socktype = sockType;
+		connType.ai_protocol = sockProto;
+		connType.ai_flags = AI_PASSIVE;
+	}
+
+	Socket::~Socket()
+	{
+		Close();
+	}
+
+	SOCKET Socket::GetSocketHandle() const
+	{
+		return connSocket;
+	}
+
+	bool Socket::Create()
+	{
+		connSocket = WSASocket(connType.ai_family, connType.ai_socktype, connType.ai_protocol, NULL, 0, 0);
+		if (connSocket == INVALID_SOCKET)
+		{
+			return false;
+		}
+
+		if (not SetSocketOptions(SocketOption::TCP_NoDelay, TRUE))
+		{
+			std::cerr << "SetSocketOptions Error." << std::endl;
+			Socket::~Socket();
+			return false;
+		}
+
+		return true;
+	}
+
+	bool Socket::Close()
+	{
+		if (connSocket == INVALID_SOCKET)
+		{
+			throw std::runtime_error("Try to close INVALID_SOCKET");
+			//return false;
+		}
+		if (closesocket(connSocket) != 0)
+		{
+			std::cerr << "Close Error: %d" << WSAGetLastError() << std::endl;
+			return false;
+		}
+
+		connSocket = INVALID_SOCKET;
+		return true;
+	}
+
+	bool Socket::Connect(PCSTR ip, PCSTR port)
+	{
+		int status;
+		addrinfo* connect;
+
+		if (not InitGetAddrInfo(ip, port, connect))
+		{
+			Socket::~Socket();
+			return false;
+		}
+
+		status = WSAConnect(connSocket, connect->ai_addr, (int)connect->ai_addrlen, 0, 0, 0, 0);
+
+		freeaddrinfo(connect);
+
+		if (status == SOCKET_ERROR)
+		{
+			Socket::~Socket();
+			return false;
+		}
+		return true;
+	}
+
+	bool Socket::SetSocketOptions(SocketOption option, BOOL value)
+	{
+		int status = 0;
+		switch (option)
+		{
+		case SocketOption::TCP_NoDelay:
+			status = setsockopt(connSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&value, sizeof(value));
+			break;
+
+		default:
+			return false;
+		}
+
+		if (status != 0)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	bool Socket::Bind(PCSTR port, PCSTR ip)
+	{
+		int status;
+		addrinfo* connect;
+
+		if (not InitGetAddrInfo(ip, port, connect))
+		{
+			Socket::~Socket();
+			return false;
+		}
+
+		status = bind(connSocket, connect->ai_addr, (int)connect->ai_addrlen);
+
+		freeaddrinfo(connect);
+
+		if (status == SOCKET_ERROR)
+		{
+			Socket::~Socket();
+			return false;
+		}
+
+		status = listen(connSocket, SOMAXCONN);
+		if (status == INVALID_SOCKET)
+		{
+			Socket::~Socket();
+			return false;
+		}
+
+		return true;
+	}
+
+	bool Socket::Accept(ClientInfo& acceptedClient)
+	{
+		sockaddr_in strcCliInfo;
+		int strcCliInfoLen = sizeof(strcCliInfo);
+		SOCKET cliSocket = WSAAccept(connSocket, (SOCKADDR*)&strcCliInfo, &strcCliInfoLen, 0, 0);
+
+		if (cliSocket == INVALID_SOCKET)
+		{
+			Socket::~Socket();
+			return false;
+		}
+
+		acceptedClient = ClientInfo(cliSocket, strcCliInfo);
+		std::cout << "[!] Accepted connection from client: #" << acceptedClient.GetClientSocket() << ", ip: " << acceptedClient.GetIp() << ", port: " << acceptedClient.GetPort() << std::endl;
+
+		return true;
+	}
+
+}
+
