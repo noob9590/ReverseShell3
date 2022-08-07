@@ -159,7 +159,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Server\src\Main.cpp" />
-    <ClCompile Include="Server\src\Server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Server\src\Server.h" />

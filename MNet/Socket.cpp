@@ -33,7 +33,7 @@ namespace MNet
 		return connSocket;
 	}
 
-	bool Socket::Create()
+	bool Socket::Create(bool setBlocking)
 	{
 		connSocket = WSASocket(connType.ai_family, connType.ai_socktype, connType.ai_protocol, NULL, 0, 0);
 		if (connSocket == INVALID_SOCKET)
@@ -41,10 +41,15 @@ namespace MNet
 			return false;
 		}
 
+		if (not SetBlocking(setBlocking))
+		{
+			std::cerr << "SetBlocking Error." << std::endl;
+			return false;
+		}
+
 		if (not SetSocketOptions(SocketOption::TCP_NoDelay, TRUE))
 		{
 			std::cerr << "SetSocketOptions Error." << std::endl;
-			Socket::~Socket();
 			return false;
 		}
 
@@ -56,7 +61,7 @@ namespace MNet
 		if (connSocket == INVALID_SOCKET)
 		{
 			throw std::runtime_error("Try to close INVALID_SOCKET");
-			//return false;
+			return false;
 		}
 		if (closesocket(connSocket) != 0)
 		{
@@ -75,7 +80,6 @@ namespace MNet
 
 		if (not InitGetAddrInfo(ip, port, connect))
 		{
-			Socket::~Socket();
 			return false;
 		}
 
@@ -85,7 +89,6 @@ namespace MNet
 
 		if (status == SOCKET_ERROR)
 		{
-			Socket::~Socket();
 			return false;
 		}
 		return true;
@@ -118,7 +121,6 @@ namespace MNet
 
 		if (not InitGetAddrInfo(ip, port, connect))
 		{
-			Socket::~Socket();
 			return false;
 		}
 
@@ -128,36 +130,48 @@ namespace MNet
 
 		if (status == SOCKET_ERROR)
 		{
-			Socket::~Socket();
 			return false;
 		}
 
 		status = listen(connSocket, SOMAXCONN);
 		if (status == INVALID_SOCKET)
 		{
-			Socket::~Socket();
 			return false;
 		}
 
 		return true;
 	}
 
-	bool Socket::Accept(ClientInfo& acceptedClient)
+	std::optional<std::tuple<SOCKET, std::string, std::string>> Socket::Accept()
 	{
+		char ip[INET_ADDRSTRLEN];
 		sockaddr_in strcCliInfo;
 		int strcCliInfoLen = sizeof(strcCliInfo);
+
 		SOCKET cliSocket = WSAAccept(connSocket, (SOCKADDR*)&strcCliInfo, &strcCliInfoLen, 0, 0);
+
+		int port = ntohs(strcCliInfo.sin_port);
+		inet_ntop(AF_INET, &strcCliInfo.sin_addr, ip, INET_ADDRSTRLEN);
 
 		if (cliSocket == INVALID_SOCKET)
 		{
-			Socket::~Socket();
-			return false;
+			return { };
 		}
 
-		acceptedClient = ClientInfo(cliSocket, strcCliInfo);
-		std::cout << "[!] Accepted connection from client: #" << acceptedClient.GetClientSocket() << ", ip: " << acceptedClient.GetIp() << ", port: " << acceptedClient.GetPort() << std::endl;
+		return { {cliSocket, std::string(ip), std::to_string(port) } };
+	}
 
+	bool Socket::SetBlocking(bool isBlocking)
+	{
+		unsigned long blocking = 0;
+		unsigned long nonBlocking = 1;
+		int status = ioctlsocket(connSocket, FIONBIO, isBlocking ? &blocking : &nonBlocking);
+		if (status == SOCKET_ERROR)
+		{
+			return false;
+		}
 		return true;
+
 	}
 
 }

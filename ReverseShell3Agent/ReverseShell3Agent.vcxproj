@@ -162,7 +162,6 @@
     <ClInclude Include="Agent\src\Agent.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Agent\src\Agent.cpp" />
     <ClCompile Include="Agent\src\Main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

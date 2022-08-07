@@ -6,7 +6,7 @@
 #include <iostream>
 #include <optional>
 #include "SocketOption.h"
-#include "ClientInfo.h"
+#include "Connection.h"
 #pragma comment (lib, "Ws2_32.lib")
 
 namespace MNet
@@ -25,11 +25,13 @@ namespace MNet
 		Socket(int addressFamily, int sockType, int sockProto);
 		~Socket();
 
-		bool Create();
+		bool Create(bool setBlocking = true);
 		bool Close();
-		bool Connect(PCSTR ip, PCSTR port);
 		bool Bind(PCSTR port, PCSTR ip = NULL);
-		bool Accept(ClientInfo& acceptedClient);
+		bool SetBlocking(bool isBlocking);
+
+		std::optional<std::tuple<SOCKET, std::string, std::string>> Accept();
+		bool Connect(PCSTR ip, PCSTR port);
 
 		SOCKET GetSocketHandle() const;
 	};

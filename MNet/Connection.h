@@ -9,11 +9,11 @@
 
 namespace MNet
 {
-	class ClientInfo
+	class Connection
 	{
 	private:
 
-		SOCKET cliSocket = INVALID_SOCKET;
+		SOCKET connSocket;
 		std::string ip;
 		std::string port;
 
@@ -21,11 +21,17 @@ namespace MNet
 
 		//ClientInfo(const char* ip, const char* port);
 
-		ClientInfo() {};
-		ClientInfo(SOCKET acceptedCliSocket, sockaddr_in strcCliInfo);
+		Connection() {};
+		Connection(SOCKET connSocket, std::string ip, std::string port);
 		SOCKET GetClientSocket() const;
 		const std::string& GetIp() const;
 		const std::string& GetPort() const;
+
+		bool Send(const void* data, int size, int& bytesSent);
+		bool SendAll(void* data, int dataSize);
+		bool Recv(void* buff, int buffSize, int& bytesReceived);
+		bool RecvAll(void* data, int dataSize);
+		bool Close();
 		
 	};
 }
