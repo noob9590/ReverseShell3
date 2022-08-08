@@ -1,5 +1,7 @@
 #include <mnet\networking.h>
 #include <iostream>
+#include <string>
+#include <cstdint>
 
 using namespace MNet;
 
@@ -10,7 +12,7 @@ int main()
 		std::cout << "Winsock successfuly initialized." << std::endl;
 		
 		Socket serverSock(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if (serverSock.Create(false))
+		if (serverSock.Create(true))
 		{
 			std::cout << "server socket successfuly created." << std::endl;
 
@@ -20,16 +22,35 @@ int main()
 				while (true)
 				{
 					auto attempt = serverSock.Accept();
-					if (attempt.has_value())
-					{
-						auto [acceptedSocket, ip, port] = attempt.value();
-						Connection client(acceptedSocket, ip, port);
-					}
-					else
-					{
-						std::cout << "Failed to accept new connection." << std::endl;
-						// handle the error when accept failed.
-					}
+						if (attempt.has_value())
+						{
+							auto [acceptedSocket, ip, port] = attempt.value();
+							Connection toClient(acceptedSocket, ip, port);
+							std::string serverBuffer = "";
+
+							uint16_t bufferSize = 0;
+
+							if (toClient.RecvAll(&bufferSize, sizeof(uint16_t)))
+							{
+								bufferSize = ntohs(bufferSize);
+								serverBuffer.resize(bufferSize);
+				
+								if (toClient.RecvAll(serverBuffer.data(), bufferSize))
+								{
+									std::cout << serverBuffer << std::endl;
+								}
+								else
+								{
+									std::cerr << "RecvAll (message) Error: " << WSAGetLastError() << std::endl;
+								}
+							}
+
+							else
+							{
+								std::cerr << "RecvAll (size) Error: " << WSAGetLastError() << std::endl;
+							}
+						}
+
 				}
 			}
 			else

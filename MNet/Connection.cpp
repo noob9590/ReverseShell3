@@ -88,7 +88,7 @@ namespace MNet
 
 			return false;
 		}
-
+		//std::cout << (char*)buff << std::endl;
 		return true;
 	}
 

@@ -1,6 +1,8 @@
 #include <MNet\Networking.h>
+#include <cstdint>
 
 using namespace MNet;
+
 int main()
 {
 	if (WSA::StartUp())
@@ -15,6 +17,22 @@ int main()
 			if (clientSock.Connect("127.0.0.1", "4000"))
 			{
 				std::cout << "Client successfuly connected." << std::endl;
+
+				Connection toServer(clientSock.GetSocketHandle(), "127.0.0.1", "4000");
+				std::string clientMessage = "Hello from client.";
+				uint16_t clientMessageSize = htons(clientMessage.size());
+
+				if (toServer.SendAll(&clientMessageSize, sizeof(uint16_t)))
+				{
+					if (not toServer.SendAll(clientMessage.data(), clientMessage.size()))
+					{
+						std::cerr << "SendAll (message) Error: " << WSAGetLastError() << std::endl;
+					}
+				}
+				else
+				{
+					std::cerr << "SendAll (size) Error: " << WSAGetLastError() << std::endl;
+				}
 			}
 			else
 			{

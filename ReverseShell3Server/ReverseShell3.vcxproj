@@ -160,9 +160,6 @@
   <ItemGroup>
     <ClCompile Include="Server\src\Main.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Server\src\Server.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
