@@ -22,8 +22,8 @@ namespace MNet
 
 	public:
 
+		Socket() { };
 		Socket(int addressFamily, int sockType, int sockProto);
-		~Socket();
 
 		bool Create(bool setBlocking = true);
 		bool Close();

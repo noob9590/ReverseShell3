@@ -23,11 +23,6 @@ namespace MNet
 		connType.ai_flags = AI_PASSIVE;
 	}
 
-	Socket::~Socket()
-	{
-		Close();
-	}
-
 	SOCKET Socket::GetSocketHandle() const
 	{
 		return connSocket;
@@ -44,12 +39,14 @@ namespace MNet
 		if (not SetBlocking(setBlocking))
 		{
 			std::cerr << "SetBlocking Error." << std::endl;
+			Close();
 			return false;
 		}
 
 		if (not SetSocketOptions(SocketOption::TCP_NoDelay, TRUE))
 		{
 			std::cerr << "SetSocketOptions Error." << std::endl;
+			Close();
 			return false;
 		}
 

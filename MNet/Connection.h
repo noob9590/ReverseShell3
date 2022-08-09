@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <string>
 #include <iostream>
+#include "Packet.h"
 
 
 namespace MNet
@@ -31,6 +32,8 @@ namespace MNet
 		bool SendAll(void* data, int dataSize);
 		bool Recv(void* buff, int buffSize, int& bytesReceived);
 		bool RecvAll(void* data, int dataSize);
+		bool Send(Packet packet);
+		bool Recv(Packet& packet);
 		bool Close();
 		
 	};

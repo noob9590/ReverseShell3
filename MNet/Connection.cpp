@@ -88,7 +88,6 @@ namespace MNet
 
 			return false;
 		}
-		//std::cout << (char*)buff << std::endl;
 		return true;
 	}
 
@@ -108,6 +107,51 @@ namespace MNet
 			}
 
 			totalBytesReceived += bytesReceived;
+		}
+
+		return true;
+	}
+
+	bool Connection::Send(Packet packet)
+	{
+		uint32_t encodedPacketSize = htonl(packet.PacketSize());
+		if (not SendAll(&encodedPacketSize, sizeof(uint32_t)))
+		{
+			int error = WSAGetLastError();
+			std::cerr << "SendAll (packet size) Error: " << error << std::endl;
+			return false;
+		}
+
+		if (not SendAll(packet.buffer.data(), packet.PacketSize()))
+		{
+			int error = WSAGetLastError();
+			std::cerr << "SendAll (packet content) Error: " << error << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
+	bool Connection::Recv(Packet& packet)
+	{
+		packet.Clear();
+
+		uint32_t encodedPacketSize = 0;
+		if (not RecvAll(&encodedPacketSize, sizeof(uint32_t)))
+		{
+			int error = WSAGetLastError();
+			std::cerr << "RecvAll (packet size) Error: " << error << std::endl;
+			return false;
+		}
+		
+		uint32_t bufferSize = ntohl(encodedPacketSize);
+		packet.buffer.resize(bufferSize);
+
+		if (not RecvAll(packet.buffer.data(), bufferSize))
+		{
+			int error = WSAGetLastError();
+			std::cerr << "RecvAll (packet content) Error: " << error << std::endl;
+			return false;
 		}
 
 		return true;
