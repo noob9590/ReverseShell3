@@ -2,7 +2,7 @@
 
 namespace MNet
 {
-    bool Client::Initialize(PCSTR ip, PCSTR port)
+    bool Client::Connect(PCSTR ip, PCSTR port)
     {
         Socket connSocket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (not connSocket.Create())

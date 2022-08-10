@@ -75,7 +75,6 @@ namespace MNet
                 clientConn.Close();
                 return false;
             }
-                
             if (not clientConn.Recv(packet))
             {
                 connSocket.Close();
