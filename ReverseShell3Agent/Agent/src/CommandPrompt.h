@@ -1,7 +1,9 @@
 #pragma once
 #include <windows.h>
+#include <synchapi.h>
 #include <iostream>
 #include <vector>
+#include <assert.h>
 
 class CommandPrompt
 {
@@ -18,7 +20,7 @@ public:
 	bool Launch(bool isPipeInitialized = true);
 	bool Close();
 	bool Cmd2Buffer();
-	void Buffer2Cmd(std::string& buffer);
+	bool Buffer2Cmd(std::string& buffer);
 	const std::string GetCmdOutput() const;
 
 };

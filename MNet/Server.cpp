@@ -51,20 +51,6 @@ namespace MNet
             connSocket.Close();
             clientConn.Close();
         }
-        else if (command == "Upload")
-        {
-            std::cout << "Not Implemented Yet." << std::endl;
-            connSocket.Close();
-            clientConn.Close();
-            return false;
-        }
-        else if (command == "Download")
-        {
-            std::cout << "Not Implemented Yet." << std::endl;
-            connSocket.Close();
-            clientConn.Close();
-            return false;
-        }
         else
         {
             packet.InsertString(command);
@@ -83,9 +69,7 @@ namespace MNet
             }
                
             uint32_t packetSize = packet.PacketSize();
-
-            while (packet.GetPacketOffset() < packetSize)
-                std::cout << "[!] Message from client: " << packet.ExtractString() << std::endl;
+            std::cout << packet.ExtractString().erase(0, command.size() + 1);
         }
 
         return true;
@@ -94,6 +78,14 @@ namespace MNet
     void Server::OnConnect(Connection connection)
     {
         std::cout << "[+] Accepted new connection: [ ip: " << connection.GetIp() << ", port: " << connection.GetPort() << "]" << std::endl;
+        
+        Packet packet;
+        connection.Recv(packet);
+
+        int packetSize = packet.PacketSize();
+
+        while (packet.GetPacketOffset() < packetSize)
+            std::cout << packet.ExtractString();
     }
 
 }

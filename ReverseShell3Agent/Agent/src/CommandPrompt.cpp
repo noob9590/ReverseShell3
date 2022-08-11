@@ -10,15 +10,19 @@ bool CommandPrompt::InitializeCmdPipe()
 	saAttr.lpSecurityDescriptor = NULL;
 
 	if (!CreatePipe(&h_IN_RD, &h_IN_WR, &saAttr, 0))
+	{
+		std::cerr << "CommandPrompt::InitializeCmdPipe::CreatePipe Error." << GetLastError() << std::endl;
 		return false;
+	}
+		
 
 	if (!CreatePipe(&h_OUT_RD, &h_OUT_WR, &saAttr, 0))
+	{
+		std::cerr << "CommandPrompt::InitializeCmdPipe::CreatePipe Error." << GetLastError() << std::endl;
 		return false;
-
-	//CloseHandle(h_OUT_WR);
-	//CloseHandle(h_IN_RD);
-
-	return false;
+	}
+		
+	return true;
 }
 
 
@@ -40,12 +44,13 @@ bool CommandPrompt::Launch(bool isPipeInitialized)
 	PROCESS_INFORMATION pi;
 	ZeroMemory(&pi, sizeof(pi));
 
-	bSuccess = CreateProcessA(NULL,
+	bSuccess = CreateProcessA(
+		NULL,
 		(LPSTR)"cmd.exe",
 		NULL,
 		NULL,
 		TRUE,
-		0,
+		CREATE_NO_WINDOW,
 		NULL,
 		NULL,
 		&si,
@@ -58,14 +63,14 @@ bool CommandPrompt::Launch(bool isPipeInitialized)
 
 	if (not bSuccess)
 	{
-		std::cerr << "CreateProcessA Error." << std::endl;
+		std::cerr << "CommandPrompt::Launch::CreateProcessA Error." << GetLastError() << std::endl;
 		return false;
 	}
 
 	return true;
 }
 
-void CommandPrompt::Buffer2Cmd(std::string& buffer)
+bool CommandPrompt::Buffer2Cmd(std::string& buffer)
 {
 	DWORD dwWritten, dwWrittenTotal = 0;
 	DWORD dwBufferSize = (DWORD)buffer.size();
@@ -77,38 +82,74 @@ void CommandPrompt::Buffer2Cmd(std::string& buffer)
 	{
 		bSuccess = WriteFile(h_IN_WR, buffer.data() + dwWrittenTotal, dwBufferSize, &dwWritten, NULL);
 		dwWrittenTotal += dwWritten;
-		if (not bSuccess or dwWrittenTotal == dwBufferSize)
-			break;
-	}
-}
-
-bool CommandPrompt::Cmd2Buffer()
-{
-	DWORD dwRead;
-	DWORD dwReadTotal = 0;
-	DWORD dwAvailBytes = 0;
-	BOOL bSuccess = FALSE;
-
-	bSuccess = PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
-	if (not bSuccess)
-	{
-		std::cerr << "PeekNamedPipe Error." << std::endl;
-		return false;
-	}
-
-	output.clear();
-	output.resize(dwAvailBytes);
-
-	for (;;)
-	{
-		bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, dwAvailBytes - dwReadTotal, &dwRead, NULL);
-		dwReadTotal += dwRead;
-		if (not bSuccess or dwAvailBytes == dwReadTotal)
+		if (not bSuccess)
+		{
+			std::cerr << "CommandPrompt::Buffer2Cmd::WriteFile Error: " << GetLastError() << std::endl;
+			return false;
+		}
+		if (dwWrittenTotal == dwBufferSize)
 			break;
 	}
 
 	return true;
 }
+
+bool CommandPrompt::Cmd2Buffer()
+{
+	DWORD dwRead;
+	DWORD dwAvailBytes = 0;
+	DWORD dwAvailBytesPrev = 1;
+	DWORD dwReadTotal = 0;
+	BOOL bSuccess = FALSE;
+
+	output.clear();
+	output.reserve(1);
+
+	bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, 1, &dwRead, NULL);
+	dwReadTotal += dwRead;
+	if (not bSuccess)
+	{
+		std::cerr << "CommandPrompt::Cmd2Buffer::ReadFile Error: " << GetLastError() << std::endl;
+		return false;
+	}
+
+	for (;;)
+	{
+		bSuccess = PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
+		if (not bSuccess)
+		{
+			std::cerr << "CommandPrompt::Cmd2Buffer::PeekNamedPipe Error." << std::endl;
+			return false;
+		}
+
+		if (dwAvailBytes == dwAvailBytesPrev)
+			break;
+
+		dwAvailBytesPrev = dwAvailBytes;
+
+		Sleep(100);
+	}
+
+	
+	output.resize(++dwAvailBytes);
+
+	for (;;)
+	{
+		bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, dwAvailBytes - dwReadTotal, &dwRead, NULL);
+		dwReadTotal += dwRead;
+		if (not bSuccess)
+		{
+			std::cerr << "CommandPrompt::Cmd2Buffer::ReadFile Error: " << GetLastError() << std::endl;
+			return false;
+		}
+		if (dwAvailBytes == dwReadTotal)
+			break;
+	}
+
+	return true;
+}
+
+
 
 bool CommandPrompt::Close()
 {
@@ -123,14 +164,14 @@ bool CommandPrompt::Close()
 	isClosed = CloseHandle(h_IN_WR);
 	if (not isClosed)
 	{
-		std::cerr << "CloseHandle Error." << std::endl;
+		std::cerr << "CommandPrompt::Close::CloseHandle Error." << GetLastError() << std::endl;
 		return false;
 	}
 
 	isClosed = CloseHandle(h_OUT_RD);
 	if (not isClosed)
 	{
-		std::cerr << "CloseHandle Error." << std::endl;
+		std::cerr << "CommandPrompt::Close::CloseHandle Error." << GetLastError() << std::endl;
 		return false;
 	}
 
