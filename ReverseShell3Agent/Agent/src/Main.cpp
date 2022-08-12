@@ -15,20 +15,25 @@ int main()
 	std::cout << "[+] Winsock successfuly initialized." << std::endl;
 
 	Agent agent;
-	agent.Connect("127.0.0.1", "4000");
+	if (not agent.Initialize())
+	{
+		std::cerr << "Failed to initialize agent." << std::endl;
+		ExitProcess(1);
+	}
+
+	if (not agent.Connect("127.0.0.1", "4000"))
+	{
+		std::cerr << "Failed to establish connection." << std::endl;
+		ExitProcess(1);
+	}
 	
-	while (agent.Logic(""))
+	while (agent.Logic())
 		Sleep(50);
 
-	if (not agent.serverConn.Close())
+	if (not agent.ShutDown())
 	{
-		std::cerr << "Main::Agent::serverConn::Close Error." << std::endl;
-		exit(1);
-	}
-	if (not agent.console.Close())
-	{
-		std::cerr << "Main::Agent::console::Close Error." << std::endl;
-		exit(1);
+		std::cerr << "Error at ShutDown" << std::endl;
+		ExitProcess(1);
 	}
 	
 	WSA::ShutDown();

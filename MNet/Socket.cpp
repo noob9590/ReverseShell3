@@ -8,7 +8,7 @@ namespace MNet
 		status = getaddrinfo(ip, port, &connType, &StrcConnect);
 		if (status != 0)
 		{
-			std::cerr << "InitGetAddrInfo Error." << std::endl;
+			std::cerr << "Error at getaddrinfo." << std::endl;
 			return false;
 		}
 		return true;
@@ -33,20 +33,21 @@ namespace MNet
 		connSocket = WSASocket(connType.ai_family, connType.ai_socktype, connType.ai_protocol, NULL, 0, 0);
 		if (connSocket == INVALID_SOCKET)
 		{
+			std::cerr << "Error at WSASocket." << std::endl;
 			return false;
 		}
 
 		if (not SetBlocking(setBlocking))
 		{
-			std::cerr << "SetBlocking Error." << std::endl;
-			Close();
+			std::cerr << "Error at SetBlocking." << std::endl;
+			Close(); // Close the socket here since we are not closing the socket when this method fails
 			return false;
 		}
 
 		if (not SetSocketOptions(SocketOption::TCP_NoDelay, TRUE))
 		{
-			std::cerr << "SetSocketOptions Error." << std::endl;
-			Close();
+			std::cerr << "Error at SetSocketOptions." << std::endl;
+			Close(); // Close the socket here since we are not closing the socket when this method fails
 			return false;
 		}
 
@@ -58,11 +59,10 @@ namespace MNet
 		if (connSocket == INVALID_SOCKET)
 		{
 			throw std::runtime_error("Try to close INVALID_SOCKET");
-			return false;
 		}
 		if (closesocket(connSocket) != 0)
 		{
-			std::cerr << "Close Error: %d" << WSAGetLastError() << std::endl;
+			std::cerr << "Error closesocket." << std::endl;
 			return false;
 		}
 
@@ -86,6 +86,7 @@ namespace MNet
 
 		if (status == SOCKET_ERROR)
 		{
+			std::cerr << "Error at WSAConnect." << std::endl;
 			return false;
 		}
 		return true;
@@ -106,6 +107,7 @@ namespace MNet
 
 		if (status != 0)
 		{
+			std::cerr << "Error at setsockopt." << std::endl;
 			return false;
 		}
 		return true;
@@ -127,12 +129,14 @@ namespace MNet
 
 		if (status == SOCKET_ERROR)
 		{
+			std::cerr << "Error at bind." << std::endl;
 			return false;
 		}
 
 		status = listen(connSocket, SOMAXCONN);
 		if (status == INVALID_SOCKET)
 		{
+			std::cerr << "Error at listen." << std::endl;
 			return false;
 		}
 
@@ -152,6 +156,7 @@ namespace MNet
 
 		if (cliSocket == INVALID_SOCKET)
 		{
+			std::cerr << "Error at WSAAccept." << std::endl;
 			return { };
 		}
 
@@ -165,6 +170,7 @@ namespace MNet
 		int status = ioctlsocket(connSocket, FIONBIO, isBlocking ? &blocking : &nonBlocking);
 		if (status == SOCKET_ERROR)
 		{
+			std::cerr << "Error at ioctlsocket." << std::endl;
 			return false;
 		}
 		return true;

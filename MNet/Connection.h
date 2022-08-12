@@ -14,13 +14,11 @@ namespace MNet
 	{
 	private:
 
-		SOCKET connSocket;
+		SOCKET connSocket = INVALID_SOCKET;
 		std::string ip;
 		std::string port;
 
 	public:
-
-		//ClientInfo(const char* ip, const char* port);
 
 		Connection() {};
 		Connection(SOCKET connSocket, std::string ip, std::string port);

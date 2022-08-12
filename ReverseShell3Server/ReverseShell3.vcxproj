@@ -159,6 +159,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Server\src\Main.cpp" />
+    <ClCompile Include="Server\src\Stager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Server\src\Stager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

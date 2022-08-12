@@ -1,10 +1,5 @@
 #include "Connection.h"
 
-//MNet::ClientInfo::ClientInfo(const char* ip, const char* port) :
-//	ip(ip), port(port)
-//{
-//}
-
 namespace MNet
 {
 
@@ -39,7 +34,7 @@ namespace MNet
 		}
 		if (closesocket(connSocket) != 0)
 		{
-			std::cerr << "Close Error: %d" << WSAGetLastError() << std::endl;
+			std::cerr << "Error at closesocket." << std::endl;
 			return false;
 		}
 
@@ -52,6 +47,7 @@ namespace MNet
 		bytesSent = send(connSocket, (const char*)buff, buffSize, 0);
 		if (bytesSent == SOCKET_ERROR)
 		{
+			std::cerr << "Error at send." << std::endl;
 			return false;
 		}
 		return true;
@@ -68,7 +64,7 @@ namespace MNet
 
 			if (not Send(bufferOffset, bytesRemaining, bytesSent))
 			{
-				std::cerr << "Send Error: %d" << WSAGetLastError() << std::endl;
+				std::cerr << "Error at Send." << std::endl;
 				return false;
 			}
 
@@ -84,7 +80,7 @@ namespace MNet
 		if (bytesReceived <= 0)
 		{
 			if (bytesReceived == 0)
-				std::cerr << "Connection Lost." << std::endl;
+				std::cerr << "Error at recv." << std::endl;
 
 			return false;
 		}
@@ -102,7 +98,7 @@ namespace MNet
 
 			if (not Recv(bufferOffset, bytesRemaining, bytesReceived))
 			{
-				std::cerr << "Recv Error: %d" << WSAGetLastError() << std::endl;
+				std::cerr << "Error at Recv" << std::endl;
 				return false;
 			}
 
@@ -118,14 +114,14 @@ namespace MNet
 		if (not SendAll(&encodedPacketSize, sizeof(uint32_t)))
 		{
 			int error = WSAGetLastError();
-			std::cerr << "SendAll (packet size) Error: " << error << std::endl;
+			std::cerr << "Error at SendAll (packet size)" << std::endl;
 			return false;
 		}
 
 		if (not SendAll(packet.buffer.data(), packet.PacketSize()))
 		{
 			int error = WSAGetLastError();
-			std::cerr << "SendAll (packet content) Error: " << error << std::endl;
+			std::cerr << "Error at SendAll (packet content)" << std::endl;
 			return false;
 		}
 
@@ -140,7 +136,7 @@ namespace MNet
 		if (not RecvAll(&encodedPacketSize, sizeof(uint32_t)))
 		{
 			int error = WSAGetLastError();
-			std::cerr << "RecvAll (packet size) Error: " << error << std::endl;
+			std::cerr << "Error at RecvAll (packet size)" << std::endl;
 			return false;
 		}
 		
@@ -150,7 +146,7 @@ namespace MNet
 		if (not RecvAll(packet.buffer.data(), bufferSize))
 		{
 			int error = WSAGetLastError();
-			std::cerr << "RecvAll (packet content) Error: " << error << std::endl;
+			std::cerr << "Error at RecvAll (packet content)" << std::endl;
 			return false;
 		}
 

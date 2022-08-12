@@ -1,7 +1,7 @@
 #include <mnet\networking.h>
 #include <iostream>
 #include <string>
-#include <cstdint>
+#include "Stager.h"
 
 using namespace MNet;
 
@@ -13,8 +13,12 @@ int main()
 	}
 		
 	std::string command;
-	Server TCPServer;
-	TCPServer.Initialize("4000");
+	Stager TCPStager;
+	if (not TCPStager.Initialize("4000"))
+	{
+		std::cout << "Server initialization failed." << std::endl;
+		ExitProcess(1);
+	}
 
 	do
 	{
@@ -22,8 +26,13 @@ int main()
 
 		std::getline(std::cin, command);
 
-	} while (TCPServer.Logic(command));
-	
+	} while (TCPStager.Logic(command));
+
+	if (not TCPStager.ShutDown())
+	{
+		std::cout << "Server shutdown failed." << std::endl;
+		ExitProcess(1);
+	}
 	WSA::ShutDown();
 }
 

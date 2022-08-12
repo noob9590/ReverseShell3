@@ -4,31 +4,31 @@ namespace MNet
 {
     bool Server::Initialize(PCSTR port, PCSTR ip)
     {
-        Socket serverSocket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        connSocket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-        if (not serverSocket.Create())
+        if (not connSocket.Create())
         {
-            std::cout << "[-] Failed to create the socket." << std::endl;
+            std::cerr << "Error at Create" << std::endl;
             return false;
         }
 
         std::cout << "[+] Server socket successfuly created." << std::endl;
 
-        if (not serverSocket.Bind(port, ip))
+        if (not connSocket.Bind(port, ip))
         {
-            std::cout << "[-] Failed to bind the socket." << std::endl;
-            serverSocket.Close();
+            std::cout << "Error at Bind" << std::endl;
+            connSocket.Close();
             return false;
         }
 
         std::cout << "[+] Server binded successfuly" << std::endl;
 
-        auto connAttempt = serverSocket.Accept();
+        auto connAttempt = connSocket.Accept();
 
         if (not connAttempt.has_value())
         {
-            std::cout << "[-] Failed to accept new connection." << std::endl;
-            serverSocket.Close();
+            std::cout << "Error at Accept" << std::endl;
+            connSocket.Close();
             return false;
         }
 
@@ -37,55 +37,63 @@ namespace MNet
         clientConn = Connection(acceptedSocket, connIp, connPort);
         OnConnect(clientConn);
 
+
         return true;
 
+    }
+
+    bool Server::ShutDown()
+    {
+
+        if (not connSocket.Close())
+        {
+            std::cerr << "Error at ShutDown" << std::endl;
+            return false;
+        }
+
+#pragma region temporary
+        if (not (clientConn.GetClientSocket() == INVALID_SOCKET))
+            if (not clientConn.Close())
+            {
+                std::cerr << "Error at ShutDown" << std::endl;
+                return false;
+            }
+#pragma endregion Code specific to close a single connected client
+
+        return true;
     }
 
     bool Server::Logic(const std::string& command)
     {
         Packet packet;
-
-        if (command == "Quit")
+        
+        if (not clientConn.Recv(packet))
         {
-            return false;
-            connSocket.Close();
+            std::cerr << "Error at Recv" << std::endl;
             clientConn.Close();
+            return false;
         }
-        else
-        {
-            packet.InsertString(command);
 
-            if (not clientConn.Send(packet))
-            {
-                connSocket.Close();
-                clientConn.Close();
-                return false;
-            }
-            if (not clientConn.Recv(packet))
-            {
-                connSocket.Close();
-                clientConn.Close();
-                return false;
-            }
-               
-            uint32_t packetSize = packet.PacketSize();
-            std::cout << packet.ExtractString().erase(0, command.size() + 1);
+        std::cout << "Message from client: " << packet.ExtractString() << std::endl;
+
+        std::string msg = "Hello from server!";
+        packet.Clear();
+        packet.InsertString(msg);
+
+        if (not clientConn.Send(packet))
+        {
+            std::cerr << "Error at Send" << std::endl;
+            clientConn.Close();
+            return false;
         }
 
         return true;
     }
 
+
     void Server::OnConnect(Connection connection)
     {
         std::cout << "[+] Accepted new connection: [ ip: " << connection.GetIp() << ", port: " << connection.GetPort() << "]" << std::endl;
-        
-        Packet packet;
-        connection.Recv(packet);
-
-        int packetSize = packet.PacketSize();
-
-        while (packet.GetPacketOffset() < packetSize)
-            std::cout << packet.ExtractString();
     }
 
 }

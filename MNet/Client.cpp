@@ -4,10 +4,10 @@ namespace MNet
 {
     bool Client::Connect(PCSTR ip, PCSTR port)
     {
-        Socket connSocket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        connSocket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (not connSocket.Create())
         {
-            std::cerr << "[-] Failed to create the socket." << std::endl;
+            std::cerr << "Error at Create." << std::endl;
             return false;
         }
 
@@ -15,7 +15,7 @@ namespace MNet
 
         if (not connSocket.Connect(ip, port))
         {
-            std::cerr << "[-] Failed to connect to the server." << std::endl;
+            std::cerr << "Error at Connect" << std::endl;
             connSocket.Close();
             return false;
         }
@@ -28,40 +28,37 @@ namespace MNet
         return true;
     }
 
-    bool Client::Logic(std::string command)
+    bool Client::Logic()
     {
         Packet packet;
+        std::string msg = "Hello from client!";
 
-        if (command == "Upload")
+        packet.InsertString(msg);
+
+        if (not serverConn.Send(packet))
         {
-            std::cout << "Not Implemented Yet." << std::endl;
+            std::cerr << "Error at Send" << std::endl;
+            return false;
         }
-        else if (command == "Download")
+
+        if (not serverConn.Recv(packet))
         {
-            std::cout << "Not Implemented Yet." << std::endl;
+            std::cerr << "Error at Recv." << std::endl;
+            return false;
         }
-        else
+
+        std::cout << "Message from server: " << packet.ExtractString() << std::endl;
+        
+
+        return true;
+    }
+
+    bool Client::ShutDown()
+    {
+        if (not connSocket.Close())
         {
-            if (not serverConn.Recv(packet))
-            {
-                connSocket.Close();
-                return false;
-            }
-
-            uint32_t packetSize = packet.PacketSize();
-
-            while (packet.GetPacketOffset() < packetSize)
-                std::cout << "[!] Message from server: " << packet.ExtractString() << std::endl;
-
-            packet.Clear();
-            packet.InsertString(std::string("Message from client."));
-            packet.InsertString(std::string("Second message from client."));
-
-            if (not serverConn.Send(packet))
-            {
-                serverConn.Close();
-                return false;
-            }
+            std::cerr << "Error at Close." << std::endl;
+            return false;
         }
 
         return true;

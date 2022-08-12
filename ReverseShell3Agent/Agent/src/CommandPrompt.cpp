@@ -1,5 +1,4 @@
 #include "CommandPrompt.h"
-#include "CommandPrompt.h"
 
 
 bool CommandPrompt::InitializeCmdPipe()
@@ -11,14 +10,20 @@ bool CommandPrompt::InitializeCmdPipe()
 
 	if (!CreatePipe(&h_IN_RD, &h_IN_WR, &saAttr, 0))
 	{
-		std::cerr << "CommandPrompt::InitializeCmdPipe::CreatePipe Error." << GetLastError() << std::endl;
+		std::cerr << "Error at CreatePipe" << std::endl;
 		return false;
 	}
 		
 
 	if (!CreatePipe(&h_OUT_RD, &h_OUT_WR, &saAttr, 0))
 	{
-		std::cerr << "CommandPrompt::InitializeCmdPipe::CreatePipe Error." << GetLastError() << std::endl;
+		std::cerr << "Error at CreatePipe" << std::endl;
+		CloseHandle(h_IN_RD);
+		CloseHandle(h_IN_WR);
+
+		h_IN_RD = nullptr;
+		h_IN_WR = nullptr;
+
 		return false;
 	}
 		
@@ -63,7 +68,7 @@ bool CommandPrompt::Launch(bool isPipeInitialized)
 
 	if (not bSuccess)
 	{
-		std::cerr << "CommandPrompt::Launch::CreateProcessA Error." << GetLastError() << std::endl;
+		std::cerr << "Error at CreateProcessA." << std::endl;
 		return false;
 	}
 
@@ -84,7 +89,7 @@ bool CommandPrompt::Buffer2Cmd(std::string& buffer)
 		dwWrittenTotal += dwWritten;
 		if (not bSuccess)
 		{
-			std::cerr << "CommandPrompt::Buffer2Cmd::WriteFile Error: " << GetLastError() << std::endl;
+			std::cerr << "Error at WriteFile." << std::endl;
 			return false;
 		}
 		if (dwWrittenTotal == dwBufferSize)
@@ -103,13 +108,13 @@ bool CommandPrompt::Cmd2Buffer()
 	BOOL bSuccess = FALSE;
 
 	output.clear();
-	output.reserve(1);
+	output.resize(1);
 
 	bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, 1, &dwRead, NULL);
 	dwReadTotal += dwRead;
 	if (not bSuccess)
 	{
-		std::cerr << "CommandPrompt::Cmd2Buffer::ReadFile Error: " << GetLastError() << std::endl;
+		std::cerr << "Error at ReadFile." << std::endl;
 		return false;
 	}
 
@@ -118,7 +123,7 @@ bool CommandPrompt::Cmd2Buffer()
 		bSuccess = PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
 		if (not bSuccess)
 		{
-			std::cerr << "CommandPrompt::Cmd2Buffer::PeekNamedPipe Error." << std::endl;
+			std::cerr << "Error at PeekNamedPipe." << std::endl;
 			return false;
 		}
 
@@ -139,7 +144,7 @@ bool CommandPrompt::Cmd2Buffer()
 		dwReadTotal += dwRead;
 		if (not bSuccess)
 		{
-			std::cerr << "CommandPrompt::Cmd2Buffer::ReadFile Error: " << GetLastError() << std::endl;
+			std::cerr << "Error at ReadFile." << std::endl;
 			return false;
 		}
 		if (dwAvailBytes == dwReadTotal)

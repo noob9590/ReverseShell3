@@ -11,14 +11,43 @@ void Agent::OnConnect(Connection connection)
 	connection.Send(packet);
 }
 
-// This is ugly need to change it and check the return value of console.<>
-Agent::Agent()
+
+bool Agent::Initialize()
 {
-	console.InitializeCmdPipe();
-	console.Launch();
+	if (not console.InitializeCmdPipe())
+	{
+		std::cerr << "Error at InitializeCmdPipe." << std::endl;
+		return false;
+	}
+
+	if (not console.Launch())
+	{
+		std::cerr << "Error at Launch." << std::endl;
+		console.Close();
+		return false;
+	}
+	
+	return true;
 }
 
-bool Agent::Logic(std::string command)
+bool Agent::ShutDown()
+{
+	if (not connSocket.Close())
+	{
+		std::cerr << "Error at Close." << std::endl;
+		return false;
+	}
+
+	if (not console.Close())
+	{
+		std::cerr << "Error at Close." << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+bool Agent::Logic()
 {
 	Packet packet;
 	
