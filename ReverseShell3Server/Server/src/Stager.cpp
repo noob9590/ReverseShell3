@@ -20,8 +20,6 @@ bool Stager::Logic(const std::string& command)
     if (command == "Quit")
     {
         return false;
-        connSocket.Close();
-        clientConn.Close();
     }
     else
     {
@@ -29,14 +27,10 @@ bool Stager::Logic(const std::string& command)
 
         if (not clientConn.Send(packet))
         {
-            connSocket.Close();
-            clientConn.Close();
             return false;
         }
         if (not clientConn.Recv(packet))
         {
-            connSocket.Close();
-            clientConn.Close();
             return false;
         }
 

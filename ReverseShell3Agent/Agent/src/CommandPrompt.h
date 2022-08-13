@@ -4,24 +4,27 @@
 #include <iostream>
 #include <vector>
 #include <assert.h>
+#include <tchar.h>
+#include <cassert>
 
 class CommandPrompt
 {
+	// TODO: refactor this class
+	//       create method to return current path
 private:
 	std::vector<char> output;
-	HANDLE h_IN_RD = nullptr;
-	HANDLE h_IN_WR = nullptr;
-	HANDLE h_OUT_RD = nullptr;
-	HANDLE h_OUT_WR = nullptr;
+	HANDLE h_OUT_RD = INVALID_HANDLE_VALUE;
+	HANDLE h_OUT_WR = INVALID_HANDLE_VALUE;
+	bool CmdOutput2Buffer();
 
 public:
 	CommandPrompt() { };
-	bool InitializeCmdPipe();
-	bool Launch(bool isPipeInitialized = true);
-	bool Close();
-	bool Cmd2Buffer();
-	bool Buffer2Cmd(std::string& buffer);
+	bool InitializePromptPipe();
+	bool ExecCommand(std::string cmd);
 	const std::string GetCmdOutput() const;
+
+
+
 
 };
 

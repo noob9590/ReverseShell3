@@ -1,57 +1,56 @@
 #include "CommandPrompt.h"
 
 
-bool CommandPrompt::InitializeCmdPipe()
+bool CommandPrompt::InitializePromptPipe()
 {
 	SECURITY_ATTRIBUTES saAttr;
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
 	saAttr.bInheritHandle = TRUE;
 	saAttr.lpSecurityDescriptor = NULL;
 
-	if (!CreatePipe(&h_IN_RD, &h_IN_WR, &saAttr, 0))
+	if (not CreatePipe(&h_OUT_RD, &h_OUT_WR, &saAttr, 0))
 	{
 		std::cerr << "Error at CreatePipe" << std::endl;
 		return false;
 	}
-		
 
-	if (!CreatePipe(&h_OUT_RD, &h_OUT_WR, &saAttr, 0))
+	if (not SetHandleInformation(h_OUT_RD, HANDLE_FLAG_INHERIT, 0))
 	{
-		std::cerr << "Error at CreatePipe" << std::endl;
-		CloseHandle(h_IN_RD);
-		CloseHandle(h_IN_WR);
-
-		h_IN_RD = nullptr;
-		h_IN_WR = nullptr;
+		std::cerr << "Error at SetHandleInformation" << std::endl;
+		CloseHandle(h_OUT_RD);
+		CloseHandle(h_OUT_WR);
+		h_OUT_RD = INVALID_HANDLE_VALUE;
+		h_OUT_WR = INVALID_HANDLE_VALUE;
 
 		return false;
 	}
-		
+
 	return true;
 }
 
-
-bool CommandPrompt::Launch(bool isPipeInitialized)
+bool CommandPrompt::ExecCommand(std::string cmd)
 {
-	BOOL bSuccess = FALSE;
+	BOOL bSuccess;
 	STARTUPINFOA si;
+
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(STARTUPINFOA);
 
-	if (isPipeInitialized)
-	{
-		si.hStdError = h_OUT_WR;
-		si.hStdOutput = h_OUT_WR;
-		si.hStdInput = h_IN_RD;
-		si.dwFlags |= STARTF_USESTDHANDLES;
-	}
+	assert(h_OUT_WR != INVALID_HANDLE_VALUE);
+	assert(h_OUT_RD != INVALID_HANDLE_VALUE);
+
+	si.hStdError = h_OUT_WR;
+	si.hStdOutput = h_OUT_WR;
+	si.dwFlags |= STARTF_USESTDHANDLES;
 
 	PROCESS_INFORMATION pi;
 	ZeroMemory(&pi, sizeof(pi));
+	
+	cmd = "/c " + cmd;
 
 	bSuccess = CreateProcessA(
-		NULL,
-		(LPSTR)"cmd.exe",
+		"C:\\Windows\\System32\\cmd.exe",
+		(LPSTR)cmd.c_str(),
 		NULL,
 		NULL,
 		TRUE,
@@ -61,128 +60,76 @@ bool CommandPrompt::Launch(bool isPipeInitialized)
 		&si,
 		&pi);
 
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-	CloseHandle(h_OUT_WR);
-	CloseHandle(h_IN_RD);
-
 	if (not bSuccess)
 	{
 		std::cerr << "Error at CreateProcessA." << std::endl;
 		return false;
 	}
 
-	return true;
-}
+	CloseHandle(h_OUT_RD);
 
-bool CommandPrompt::Buffer2Cmd(std::string& buffer)
-{
-	DWORD dwWritten, dwWrittenTotal = 0;
-	DWORD dwBufferSize = (DWORD)buffer.size();
-	BOOL bSuccess = FALSE;
-
-	// # TODO: check the behavior of dwWritten/dwWrittenTotal
-	// #       maybe the are the same
-	for (;;)
+	if (not CmdOutput2Buffer())
 	{
-		bSuccess = WriteFile(h_IN_WR, buffer.data() + dwWrittenTotal, dwBufferSize, &dwWritten, NULL);
-		dwWrittenTotal += dwWritten;
-		if (not bSuccess)
-		{
-			std::cerr << "Error at WriteFile." << std::endl;
-			return false;
-		}
-		if (dwWrittenTotal == dwBufferSize)
-			break;
-	}
-
-	return true;
-}
-
-bool CommandPrompt::Cmd2Buffer()
-{
-	DWORD dwRead;
-	DWORD dwAvailBytes = 0;
-	DWORD dwAvailBytesPrev = 1;
-	DWORD dwReadTotal = 0;
-	BOOL bSuccess = FALSE;
-
-	output.clear();
-	output.resize(1);
-
-	bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, 1, &dwRead, NULL);
-	dwReadTotal += dwRead;
-	if (not bSuccess)
-	{
-		std::cerr << "Error at ReadFile." << std::endl;
+		std::cerr << "Error at CmdOutput2Buffer." << std::endl;
 		return false;
 	}
 
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	CloseHandle(h_OUT_WR);
+
+	h_OUT_WR = INVALID_HANDLE_VALUE;
+	h_OUT_RD = INVALID_HANDLE_VALUE;
+
+	return true;
+}
+
+bool CommandPrompt::CmdOutput2Buffer()
+{
+	DWORD dwRead;
+	DWORD dwAvailBytes = 0;
+	DWORD dwReadTotal = 0;
+	BOOL bSuccess = FALSE;
+
+	bSuccess = PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
+	if (not bSuccess)
+	{
+		int error = GetLastError();
+		std::cerr << "Error at PeekNamedPipe." << std::endl;
+		return false;
+	}
+
+	output.clear();
+	output.resize(dwAvailBytes);
+
+
 	for (;;)
 	{
+
+		bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, dwAvailBytes, &dwRead, NULL);
+		dwReadTotal += dwRead;
+		if (not bSuccess)
+		{
+			int error = GetLastError();
+			if (error == ERROR_BROKEN_PIPE)
+				break;
+
+			std::cerr << "Error at ReadFile." << std::endl;
+			return false;
+		}
+
 		bSuccess = PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
 		if (not bSuccess)
 		{
+			int error = GetLastError();
 			std::cerr << "Error at PeekNamedPipe." << std::endl;
 			return false;
 		}
 
-		if (dwAvailBytes == dwAvailBytesPrev)
-			break;
-
-		dwAvailBytesPrev = dwAvailBytes;
-
-		Sleep(100);
+		output.resize(dwReadTotal + dwAvailBytes);
 	}
-
 	
-	output.resize(++dwAvailBytes);
-
-	for (;;)
-	{
-		bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, dwAvailBytes - dwReadTotal, &dwRead, NULL);
-		dwReadTotal += dwRead;
-		if (not bSuccess)
-		{
-			std::cerr << "Error at ReadFile." << std::endl;
-			return false;
-		}
-		if (dwAvailBytes == dwReadTotal)
-			break;
-	}
-
-	return true;
-}
-
-
-
-bool CommandPrompt::Close()
-{
-	BOOL isClosed;
-
-	if (not h_IN_WR or not h_OUT_RD)
-	{
-		throw std::runtime_error("Try to close nullptr HANDLE");
-		return false;
-	}
-		
-	isClosed = CloseHandle(h_IN_WR);
-	if (not isClosed)
-	{
-		std::cerr << "CommandPrompt::Close::CloseHandle Error." << GetLastError() << std::endl;
-		return false;
-	}
-
-	isClosed = CloseHandle(h_OUT_RD);
-	if (not isClosed)
-	{
-		std::cerr << "CommandPrompt::Close::CloseHandle Error." << GetLastError() << std::endl;
-		return false;
-	}
-
-	h_IN_WR = nullptr;
-	h_OUT_RD = nullptr;
-
 	return true;
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <MNet\Networking.h>
+#include <filesystem>
 #include "CommandPrompt.h"
 
 using namespace MNet;

