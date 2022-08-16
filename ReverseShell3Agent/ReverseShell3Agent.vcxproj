@@ -161,11 +161,11 @@
   <ItemGroup>
     <ClCompile Include="Agent\src\Agent.cpp" />
     <ClCompile Include="Agent\src\Main.cpp" />
-    <ClCompile Include="Agent\src\CommandPrompt.cpp" />
+    <ClCompile Include="Agent\src\Command.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Agent\src\Agent.h" />
-    <ClInclude Include="Agent\src\CommandPrompt.h" />
+    <ClInclude Include="Agent\src\Command.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

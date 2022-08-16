@@ -128,6 +128,149 @@ namespace MNet
 		return true;
 	}
 
+
+	bool Connection::SendFile(std::string path)
+	{
+		Packet packet;
+		HANDLE hFile;
+		DWORD dwBytesRead = 0;
+		DWORD bytesRemaining = 0;
+		OVERLAPPED ol = { 0 };
+		LARGE_INTEGER lpFileSize;
+		std::vector<BYTE> fileBuffer;
+
+		hFile = ::CreateFileA(
+			path.c_str(),
+			GENERIC_READ,
+			FILE_SHARE_READ,
+			NULL, // default
+			OPEN_EXISTING | CREATE_NEW,
+			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+			NULL
+		);
+
+		if (hFile == INVALID_HANDLE_VALUE)
+		{
+			std::cerr << "Error at CreateFile." << std::endl;
+			return false;
+		}
+
+		BOOL bSuccess = GetFileSizeEx(hFile, &lpFileSize);
+		if (not bSuccess)
+		{
+			std::cerr << "Error at GetFileSizeEx." << std::endl;
+			return false;
+		}
+
+		bytesRemaining = (DWORD)lpFileSize.LowPart;
+		std::string fname = std::filesystem::path(path).filename().string();
+
+		packet.InsertInt(bytesRemaining);
+		packet.InsertString(fname);
+
+		if (not Send(packet))
+		{
+			std::cerr << "Error at Send." << std::endl;
+			return false;
+		}
+
+		do
+		{
+			uint32_t buffSize = min(8192, bytesRemaining);
+			fileBuffer.clear();
+			fileBuffer.resize(buffSize);
+
+			if (not ReadFileEx(hFile, fileBuffer.data(), buffSize, &ol, 0))
+			{
+				std::cerr << "Error at ReadFileEx." << std::endl;
+				return false;
+			}
+
+			GetOverlappedResult(hFile, &ol, &dwBytesRead, TRUE);
+			ol.Offset += dwBytesRead;
+			bytesRemaining -= dwBytesRead;
+
+			packet.Clear();
+			packet.InsertBytes(fileBuffer);
+			if (not Send(packet))
+			{
+				std::cerr << "Error at Send (file content)" << std::endl;
+				return false;
+			}
+
+		} while (bytesRemaining);
+
+		CloseHandle(hFile);
+
+		return true;
+	}
+
+	bool Connection::RecvFile()
+	{
+		Packet packet;
+		HANDLE hFile;
+		DWORD dwBytesRead = 0;
+		OVERLAPPED ol = { 0 };
+		LARGE_INTEGER lpFileSize;
+
+		if (not Recv(packet))
+		{
+			std::cout << "Error at Recv (file information)" << std::endl;
+			return false;
+		}
+
+		uint32_t    filesize = packet.ExtractInt();
+		std::string filename = packet.ExtractString();
+
+		hFile = ::CreateFileA(
+			filename.c_str(),
+			GENERIC_WRITE,
+			FILE_SHARE_WRITE,
+			NULL, // default
+			CREATE_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+			NULL
+		);
+
+		if (hFile == INVALID_HANDLE_VALUE)
+		{
+			std::cerr << "Error at CreateFile." << std::endl;
+			return false;
+		}
+
+		do
+		{
+
+			packet.Clear();
+			if (not Recv(packet))
+			{
+				std::cout << "Error at Recv (file content)" << std::endl;
+				return false;
+			}
+
+			std::vector<BYTE> fileBuffer = packet.ExtractBytes();
+
+			if (not WriteFileEx(hFile, fileBuffer.data(), fileBuffer.size(), &ol, NULL))
+			{
+				std::cerr << "Error at WriteFileEx." << std::endl;
+				return false;
+			}
+
+			GetOverlappedResult(hFile, &ol, &dwBytesRead, TRUE);
+			ol.Offset += dwBytesRead;
+			filesize  -= dwBytesRead;
+
+			// Temp assert for making sure we write all the bytes.
+			// This needs to be replaced with a while loop.
+			//assert(dwBytesRead == fileBuffer.size());
+
+		} while (filesize);
+
+		CloseHandle(hFile);
+
+		return true;
+	}
+
 	bool Connection::Recv(Packet& packet)
 	{
 		packet.Clear();

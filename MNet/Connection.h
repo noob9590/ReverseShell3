@@ -5,6 +5,8 @@
 #include <windows.h>
 #include <string>
 #include <iostream>
+#include <cassert>
+#include <filesystem>
 #include "Packet.h"
 
 
@@ -32,6 +34,9 @@ namespace MNet
 		bool RecvAll(void* data, int dataSize);
 		bool Send(Packet packet);
 		bool Recv(Packet& packet);
+		
+		bool SendFile(std::string path);
+		bool RecvFile();
 		bool Close();
 		
 	};

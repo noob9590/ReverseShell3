@@ -13,7 +13,7 @@ private:
 
 public:
 	
-	std::vector<char> buffer;
+	std::vector<BYTE> buffer;
 
 	void Clear();
 	void Append(const void* data, uint32_t size);
@@ -25,5 +25,8 @@ public:
 
 	void InsertString(const std::string& str);
 	std::string ExtractString();
+
+	void InsertBytes(std::vector<BYTE> bytes);
+	std::vector<BYTE> ExtractBytes();
 };
 

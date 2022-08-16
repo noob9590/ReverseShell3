@@ -21,7 +21,7 @@
     <ClCompile Include="Agent\src\Agent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Agent\src\CommandPrompt.cpp">
+    <ClCompile Include="Agent\src\Command.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -29,7 +29,7 @@
     <ClInclude Include="Agent\src\Agent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Agent\src\CommandPrompt.h">
+    <ClInclude Include="Agent\src\Command.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

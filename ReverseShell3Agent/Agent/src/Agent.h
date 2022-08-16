@@ -1,7 +1,7 @@
 #pragma once
 #include <MNet\Networking.h>
 #include <filesystem>
-#include "CommandPrompt.h"
+#include "Command.h"
 
 using namespace MNet;
 
@@ -9,13 +9,12 @@ class Agent : public Client
 {
 private:
 
-	CommandPrompt console;
+	Command command;
 
 	void OnConnect(Connection connection) override;
 
 public:
 
-	bool Initialize();
 	bool ShutDown() override;
 	bool Logic() override;
 };
