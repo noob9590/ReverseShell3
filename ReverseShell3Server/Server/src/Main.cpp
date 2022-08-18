@@ -24,6 +24,7 @@ int main()
 	{
 		command.clear();
 
+		std::cout << ">> ";
 		std::getline(std::cin, command);
 
 	} while (TCPStager.Logic(command));

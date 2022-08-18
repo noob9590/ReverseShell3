@@ -13,15 +13,15 @@ class Command
 	//       create method to return current path
 private:
 	std::vector<char> output;
-	bool CmdOutput2Buffer(HANDLE& h_OUT_RD);
-	bool InitializePromptPipe(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR);
+	bool Pipe2Buffer(HANDLE& h_OUT_RD);
+	bool PipeInit(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR);
 
 public:
 	Command() { };
 	bool Execute(std::string cmd);
-	const std::string GetCmdOutput() const;
-	const std::string GetCurrentPath() const;
-	const bool SetCurrentPath(std::string& path) const;
+	const std::string GetOutput() const;
+	const std::string GetCurrentDir() const;
+	const bool SetCurrentDir(std::string& path) const;
 
 };
 

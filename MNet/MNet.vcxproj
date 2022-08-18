@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Additionals.cpp" />
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="Connection.cpp" />
     <ClCompile Include="Packet.cpp" />
@@ -155,11 +156,13 @@
     <ClCompile Include="WSA.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Additionals.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="CommandOptions.h" />
     <ClInclude Include="Connection.h" />
     <ClInclude Include="Networking.h" />
     <ClInclude Include="Packet.h" />
+    <ClInclude Include="PacketType.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="Socket.h" />
     <ClInclude Include="SocketOption.h" />

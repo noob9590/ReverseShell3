@@ -8,7 +8,9 @@
 #include <cassert>
 #include <filesystem>
 #include "Packet.h"
+#include "Additionals.h"
 
+#define BUFSIZE 8192
 
 namespace MNet
 {
@@ -35,8 +37,8 @@ namespace MNet
 		bool Send(Packet packet);
 		bool Recv(Packet& packet);
 		
-		bool SendFile(std::string path);
-		bool RecvFile();
+		bool SendFile(std::string& filename);
+		bool RecvFile(std::string& filename, uint32_t filesize);
 		bool Close();
 		
 	};

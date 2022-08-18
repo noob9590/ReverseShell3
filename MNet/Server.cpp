@@ -77,6 +77,7 @@ namespace MNet
         std::cout << "Message from client: " << packet.ExtractString() << std::endl;
 
         std::string msg = "Hello from server!";
+
         packet.Clear();
         packet.InsertString(msg);
 

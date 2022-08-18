@@ -30,7 +30,9 @@ namespace MNet
 
     bool Client::Logic()
     {
+ 
         Packet packet;
+
         std::string msg = "Hello from client!";
 
         packet.InsertString(msg);
