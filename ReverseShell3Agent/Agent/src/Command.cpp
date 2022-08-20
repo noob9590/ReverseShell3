@@ -142,3 +142,42 @@ const std::string Command::GetOutput() const
 {
 	return std::string(output.data(), output.size());
 }
+
+void Command::TakeScreenshot(std::vector<BYTE>& imageBytes)
+{
+	using namespace Gdiplus;
+
+	IStream* stream = NULL;
+	// create stream object
+	HRESULT hr = CreateStreamOnHGlobal(0, TRUE, &stream);
+	CImage image;
+	ULARGE_INTEGER liSize;
+
+	// create a screen and a memory device context
+	HDC hDCScreen = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
+	// create a compatible bitmap and select it in the memory DC
+	HDC hDCMem = ::CreateCompatibleDC(hDCScreen);
+	int width = ::GetDeviceCaps(hDCScreen, HORZRES); // get screen width
+	int height = GetDeviceCaps(hDCScreen, VERTRES); // get screen height
+	// bit-blit from screen to memory device context
+	HBITMAP hBitmap = ::CreateCompatibleBitmap(hDCScreen, width, height);
+	HBITMAP hBmpOld = (HBITMAP)::SelectObject(hDCMem, hBitmap);
+	// note: CAPTUREBLT flag is required to capture layered windows
+	DWORD dwRop = SRCCOPY | CAPTUREBLT;
+	BOOL bRet = ::BitBlt(hDCMem, 0, 0, width, height, hDCScreen, 0, 0, dwRop);
+	// attach bitmap handle to CImage
+	image.Attach(hBitmap);
+	// screenshot to jpg and save to stream
+	image.Save(stream, Gdiplus::ImageFormatJPEG);
+	::IStream_Size(stream, &liSize);
+	DWORD len = liSize.LowPart;
+	::IStream_Reset(stream);
+	imageBytes.resize(len);
+	::IStream_Read(stream, &imageBytes[0], len);
+	stream->Release();
+
+	// restore the memory DC and perform cleanup
+	::SelectObject(hDCMem, hBmpOld);
+	::DeleteDC(hDCMem);
+	::DeleteDC(hDCScreen);
+}

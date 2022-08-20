@@ -1,5 +1,6 @@
 #pragma once
 #include <MNet\networking.h>
+#include <io.h>
 
 using namespace MNet;
 

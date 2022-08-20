@@ -1,11 +1,17 @@
 #pragma once
 #include <windows.h>
+#include <atlimage.h>
+#include <windows.h>
+#include <gdiplus.h>
 #include <synchapi.h>
 #include <iostream>
 #include <vector>
 #include <tchar.h>
 #include <filesystem>
 #include <exception>
+#pragma comment (lib,"Gdiplus.lib")
+
+#include <fstream>
 
 class Command
 {
@@ -22,6 +28,6 @@ public:
 	const std::string GetOutput() const;
 	const std::string GetCurrentDir() const;
 	const bool SetCurrentDir(std::string& path) const;
-
+	void TakeScreenshot(std::vector<BYTE>& imageBytes);
 };
 

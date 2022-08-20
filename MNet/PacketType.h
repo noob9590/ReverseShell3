@@ -7,10 +7,13 @@ namespace MNet
 	enum PacketType : uint16_t
 	{
 		Invalid,
-		ConnectionClose,
 		Integers,
-		Text,
+		Characters,
 		Bytes,
+		ConnectionClose,
+		FileRequest,
+		FileTransmit,
+		Screenshot,
 		Pwd
 	};
 
