@@ -53,6 +53,19 @@ namespace MNet
 		return true;
 	}
 
+	bool Connection::Recv(void* buff, int buffSize, int& bytesReceived)
+	{
+		bytesReceived = recv(connSocket, (char*)buff, buffSize, 0);
+		if (bytesReceived <= 0)
+		{
+			if (bytesReceived == 0)
+				std::cerr << "Error at recv." << std::endl;
+
+			return false;
+		}
+		return true;
+	}
+
 	bool Connection::SendAll(void* data, int dataSize)
 	{
 		int totalBytesSent = 0;
@@ -71,19 +84,6 @@ namespace MNet
 			totalBytesSent += bytesSent;
 		}
 
-		return true;
-	}
-
-	bool Connection::Recv(void* buff, int buffSize, int& bytesReceived)
-	{
-		bytesReceived = recv(connSocket, (char*)buff, buffSize, 0);
-		if (bytesReceived <= 0)
-		{
-			if (bytesReceived == 0)
-				std::cerr << "Error at recv." << std::endl;
-
-			return false;
-		}
 		return true;
 	}
 
@@ -108,7 +108,7 @@ namespace MNet
 		return true;
 	}
 
-	bool Connection::Send(Packet packet)
+	bool Connection::SendPacket(Packet packet)
 	{
 		uint32_t encodedPacketSize = htonl(packet.PacketSize());
 		if (not SendAll(&encodedPacketSize, sizeof(uint32_t)))
@@ -128,127 +128,7 @@ namespace MNet
 		return true;
 	}
 
-	// might break this function into several
-	bool Connection::SendFile(std::string& filename)
-	{
-		HANDLE hFile;
-
-		if (not WinOpenFile(hFile,filename, false))
-		{
-			std::cerr << "Error at WinOpenFile" << std::endl;
-			return false;
-		}
-
-		LARGE_INTEGER lpFileSize;
-		BOOL bSuccess = GetFileSizeEx(hFile, &lpFileSize);
-
-		if (not bSuccess)
-		{
-			std::cerr << "Error at GetFileSizeEx." << std::endl;
-			return false;
-		}
-
-		DWORD bytesRemaining = lpFileSize.LowPart;
-		Packet packet(PacketType::Bytes);
-		packet.InsertString(filename);
-		packet.InsertInt(bytesRemaining);
-
-		if (not Send(packet))
-		{
-			std::cerr << "Error at Send." << std::endl;
-			return false;
-		}
-
-		std::vector<BYTE> fileBuffer;
-		DWORD dwBytesRead = 0;
-		OVERLAPPED	   ol = { 0 };
-
-		do
-		{
-			uint32_t buffSize = min(BUFSIZE, bytesRemaining);
-			fileBuffer.clear();
-			fileBuffer.resize(buffSize);
-
-			if (not ReadFileEx(hFile, fileBuffer.data(), buffSize, &ol, 0))
-			{
-				std::cerr << "Error at ReadFileEx." << std::endl;
-				return false;
-			}
-
-			GetOverlappedResult(hFile, &ol, &dwBytesRead, TRUE);
-
-			Packet packet(PacketType::Bytes);
-			packet.InsertBytes(fileBuffer);
-
-			if (not Send(packet))
-			{
-				std::cerr << "Error at Send (file content)" << std::endl;
-				return false;
-			}
-
-			ol.Offset += dwBytesRead;
-			bytesRemaining -= dwBytesRead;
-
-		} while (bytesRemaining);
-
-		CloseHandle(hFile);
-
-		return true;
-	}
-
-	// might break this function into several
-	bool Connection::RecvFile(std::string& filename, uint32_t filesize)
-	{
-		HANDLE hFile;	
-
-		if (not WinOpenFile(hFile, filename, true))
-		{
-			std::cerr << "Error at WinOpenFile (new file)." << std::endl;
-			return false;
-		}
-
-		uint32_t       bytesRemaining = filesize;
-		DWORD		   dwBytesRead    = 0;
-		OVERLAPPED	   ol             = { 0 };
-		LARGE_INTEGER lpFileSize;
-
-		do
-		{
-			Packet packet(PacketType::Bytes);
-
-			if (not Recv(packet))
-			{
-				std::cout << "Error at Recv (file content)" << std::endl;
-				return false;
-			}
-
-			std::vector<BYTE> fileBuffer = packet.ExtractBytes();
-
-			if (not WriteFileEx(hFile, fileBuffer.data(), fileBuffer.size(), &ol, 0))
-			{
-				int error = GetLastError();
-				std::cerr << "Error at WriteFileEx." << std::endl;
-				return false;
-			}
-
-			GetOverlappedResult(hFile, &ol, &dwBytesRead, TRUE);
-
-			// Temp assert for making sure we write all the bytes.
-			// This needs to be replaced with a while loop.
-			assert(dwBytesRead == fileBuffer.size());
-
-			ol.Offset += dwBytesRead;
-			bytesRemaining -= dwBytesRead;
-
-		} while (bytesRemaining);
-
-		CloseHandle(hFile);
-
-		return true;
-	}
-
-
-	bool Connection::Recv(Packet& packet)
+	bool Connection::RecvPacket(Packet& packet)
 	{
 		packet.Clear(packet.GetPacketType());
 
@@ -259,7 +139,7 @@ namespace MNet
 			std::cerr << "Error at RecvAll (packet size)" << std::endl;
 			return false;
 		}
-		
+
 		uint32_t bufferSize = ntohl(encodedPacketSize);
 		packet.buffer.resize(bufferSize);
 
@@ -268,6 +148,85 @@ namespace MNet
 			int error = WSAGetLastError();
 			std::cerr << "Error at RecvAll (packet content)" << std::endl;
 			return false;
+		}
+
+		return true;
+	}
+
+	// might break this function into several
+	bool Connection::SendFile(std::string& filename)
+	{
+
+		std::fstream file;
+		file.open(filename, std::ios::in | std::ios::binary);
+
+		if (file.is_open())
+		{
+			uint32_t filesize = std::filesystem::file_size(filename);
+			uint32_t bytesRemaining = filesize;
+			
+			Packet packet(PacketType::FileTransmit);
+			packet.InsertString(filename);
+			packet.InsertInt(filesize);
+
+			if (not SendPacket(packet))
+			{
+				std::cerr << "Error at Send." << std::endl;
+				return false;
+			}
+
+			std::vector<BYTE> fileBuffer;
+
+			do 
+			{
+				uint32_t buffSize = min(BUFSIZE, bytesRemaining);
+				std::vector<BYTE> fileBuffer(buffSize, 0);
+
+				file.read(reinterpret_cast<char*>(fileBuffer.data()), buffSize);
+
+				packet.Clear();
+				packet.InsertBytes(fileBuffer);
+
+				if (not SendPacket(packet))
+				{
+					std::cerr << "Error at Send (file content)" << std::endl;
+					return false;
+				}
+
+				bytesRemaining -= buffSize;
+
+			} while (bytesRemaining);
+
+			file.close();
+		}
+
+		return true;
+	}
+
+	bool Connection::RecvFile(std::string& filename, uint32_t filesize)
+	{
+		uint32_t bytesRemaining = filesize;
+		std::fstream file;
+		file.open(filename, std::ios::out | std::ios::binary);
+		if (file.is_open())
+		{
+			do 
+			{
+				Packet packet(PacketType::Bytes);
+
+				if (not RecvPacket(packet))
+				{
+					std::cout << "Error at Recv (file content)" << std::endl;
+					return false;
+				}
+
+				std::vector<BYTE> fileBuffer = packet.ExtractBytes();
+				
+				file.write(reinterpret_cast<char*>(fileBuffer.data()), fileBuffer.size());
+
+				bytesRemaining -= fileBuffer.size();
+
+			} while (bytesRemaining);
 		}
 
 		return true;

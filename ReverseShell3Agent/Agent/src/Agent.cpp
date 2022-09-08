@@ -5,7 +5,7 @@ void Agent::OnConnect(Connection connection)
 	Packet packet;
 
 	packet.InsertString(command.GetCurrentDir());
-	connection.Send(packet);
+	connection.SendPacket(packet);
 }
 
 
@@ -24,14 +24,14 @@ bool Agent::Logic()
 {
 	Packet packet;
 
-	if (not serverConn.Recv(packet))
+	if (not serverConn.RecvPacket(packet))
 	{
 		return false;
 	}
 
 	PacketType packetType = packet.GetPacketType();
 
-	// shutdown if connectionClose recevied.
+	// shutdown if connectionClose received.
 	if (packetType == PacketType::ConnectionClose)
 		return false;
 
@@ -58,7 +58,7 @@ bool Agent::Logic()
 
 		else
 		{
-			//clear the paccket and set packet type to invalid since file does not exist
+			//clear the packet and set packet type to invalid since file does not exist
 			packet.Clear();
 		}
 
@@ -89,7 +89,7 @@ bool Agent::Logic()
 		packet.InsertInt(imageBytes.size());
 
 		// send image size
-		if (not serverConn.Send(packet))
+		if (not serverConn.SendPacket(packet))
 		{
 			std::cerr << "Error at Send (image size)." << std::endl;
 			return false;
@@ -99,7 +99,7 @@ bool Agent::Logic()
 		packet.Clear(packet.GetPacketType());
 		packet.InsertBytes(imageBytes);
 
-		if (not serverConn.Send(packet))
+		if (not serverConn.SendPacket(packet))
 		{
 			std::cerr << "Error at Send (image bytes)." << std::endl;
 			return false;
@@ -125,7 +125,7 @@ bool Agent::Logic()
 		{
 			//clear the paccket and set packet type to invalid since the system cannot find it.
 			packet.Clear();
-			packet.InsertString(std::string("The system cannot find the path specified.\n"));
+			packet.InsertString("The system cannot find the path specified.\n");
 		}
 		
 	}
@@ -143,7 +143,7 @@ bool Agent::Logic()
 		packet.InsertString(command.GetOutput());
 	}
 
-	if (not serverConn.Send(packet))
+	if (not serverConn.SendPacket(packet))
 	{
 		std::cerr << "Error at Send (response)." << std::endl;
 		return false;

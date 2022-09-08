@@ -12,14 +12,9 @@ int main()
 		exit(1);
 	}
 
-	std::cout << "[+] Winsock successfuly initialized." << std::endl;
+	std::cout << "[+] Winsock successfully initialized." << std::endl;
 
 	Agent agent;
-	//if (not agent.Initialize())
-	//{
-	//	std::cerr << "Failed to initialize agent." << std::endl;
-	//	ExitProcess(1);
-	//}
 
 	if (not agent.Connect("127.0.0.1", "4000"))
 	{
@@ -27,8 +22,7 @@ int main()
 		ExitProcess(1);
 	}
 	
-	while (agent.Logic())
-		Sleep(50);
+	while (agent.Logic());
 
 	if (not agent.ShutDown())
 	{

@@ -37,13 +37,13 @@ namespace MNet
 
         packet.InsertString(msg);
 
-        if (not serverConn.Send(packet))
+        if (not serverConn.SendPacket(packet))
         {
             std::cerr << "Error at Send" << std::endl;
             return false;
         }
 
-        if (not serverConn.Recv(packet))
+        if (not serverConn.RecvPacket(packet))
         {
             std::cerr << "Error at Recv." << std::endl;
             return false;

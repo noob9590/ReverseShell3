@@ -67,7 +67,7 @@ namespace MNet
     {
         Packet packet;
         
-        if (not clientConn.Recv(packet))
+        if (not clientConn.RecvPacket(packet))
         {
             std::cerr << "Error at Recv" << std::endl;
             clientConn.Close();
@@ -81,7 +81,7 @@ namespace MNet
         packet.Clear();
         packet.InsertString(msg);
 
-        if (not clientConn.Send(packet))
+        if (not clientConn.SendPacket(packet))
         {
             std::cerr << "Error at Send" << std::endl;
             clientConn.Close();

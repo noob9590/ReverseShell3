@@ -14,7 +14,8 @@ namespace MNet
 		FileRequest,
 		FileTransmit,
 		Screenshot,
-		Pwd
+		Pwd,
+		Meterpreter
 	};
 
 }

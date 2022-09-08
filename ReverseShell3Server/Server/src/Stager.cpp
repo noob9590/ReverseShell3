@@ -5,7 +5,7 @@ void Stager::OnConnect(Connection newConnection)
     std::cout << "[+] Accepted new connection: [ ip: " << newConnection.GetIp() << ", port: " << newConnection.GetPort() << "]" << std::endl;
 
     Packet packet;
-    newConnection.Recv(packet);
+    newConnection.RecvPacket(packet);
 
     uint32_t packetSize = packet.PacketSize();
     std::cout << "[+] Current Directory: ";
@@ -52,14 +52,14 @@ bool Stager::Logic(const std::string& cmd)
         packet.InsertString(filename);
 
         // send packet with the file name which we want to receive
-        if (not clientConn.Send(packet))
+        if (not clientConn.SendPacket(packet))
         {
             std::cerr << "Error at Send (download pcket)." << std::endl;
             return false;
         }
 
         // receive packet with filename and file size
-        if (not clientConn.Recv(packet))
+        if (not clientConn.RecvPacket(packet))
         {
             std::cerr << "Error at Send (download pcket)." << std::endl;
             return false;
@@ -89,11 +89,13 @@ bool Stager::Logic(const std::string& cmd)
     else if (packetType == PacketType::FileTransmit)
     {
         // check if file exist, if not display error message
-        // send the file
+        
         std::string filename = cmd.substr(cmd.find(' ') + 1);
 
         if (std::filesystem::exists(filename))
         {
+
+            // send the file
             if (not clientConn.SendFile(filename))
             {
                 std::cerr << "Error at SendFile." << std::endl;
@@ -112,7 +114,7 @@ bool Stager::Logic(const std::string& cmd)
     // send connectionClose packet to the agent and return
     if (packetType == PacketType::ConnectionClose)
     {
-        if (not clientConn.Send(packet))
+        if (not clientConn.SendPacket(packet))
         {
             std::cerr << "Error at Send (ConnectionClose)." << std::endl;
         }
@@ -122,13 +124,13 @@ bool Stager::Logic(const std::string& cmd)
         packet.InsertString(cmd);
 
     // send packet since it is not send/recv file
-    if (not clientConn.Send(packet))
+    if (not clientConn.SendPacket(packet))
     {
-        std::cerr << "Error at Send (ConnectionClose)." << std::endl;
+        std::cerr << "Error at Send (packet)." << std::endl;
     }
 
     // now receive the response
-    if (not clientConn.Recv(packet))
+    if (not clientConn.RecvPacket(packet))
     {
         std::cerr << "Error at Recv (agent response)." << std::endl;
     }

@@ -33,7 +33,10 @@
     <ClCompile Include="Client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Additionals.cpp">
+    <ClCompile Include="Crypter\Crypter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Crypter\base64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -65,10 +68,13 @@
     <ClInclude Include="Client.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Additionals.h">
+    <ClInclude Include="PacketType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PacketType.h">
+    <ClInclude Include="Crypter\Crypter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Crypter\base64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

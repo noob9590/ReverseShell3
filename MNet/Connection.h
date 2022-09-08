@@ -7,8 +7,8 @@
 #include <iostream>
 #include <cassert>
 #include <filesystem>
+#include <fstream>
 #include "Packet.h"
-#include "Additionals.h"
 
 #define BUFSIZE 8192
 
@@ -34,8 +34,8 @@ namespace MNet
 		bool SendAll(void* data, int dataSize);
 		bool Recv(void* buff, int buffSize, int& bytesReceived);
 		bool RecvAll(void* data, int dataSize);
-		bool Send(Packet packet);
-		bool Recv(Packet& packet);
+		bool SendPacket(Packet packet);
+		bool RecvPacket(Packet& packet);
 		
 		bool SendFile(std::string& filename);
 		bool RecvFile(std::string& filename, uint32_t filesize);
