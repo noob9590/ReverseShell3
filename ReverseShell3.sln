@@ -5,15 +5,19 @@ VisualStudioVersion = 17.2.32526.322
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReverseShell3Server", "ReverseShell3Server\ReverseShell3.vcxproj", "{D68D8377-4FBE-43EF-851B-457F26D3F6E6}"
 	ProjectSection(ProjectDependencies) = postProject
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890} = {022B7A37-D570-4734-9DA4-AFBF3B20B890}
 		{11D96C40-9D50-463C-B78F-1F303E6425EE} = {11D96C40-9D50-463C-B78F-1F303E6425EE}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReverseShell3Agent", "ReverseShell3Agent\ReverseShell3Agent.vcxproj", "{40F70F08-8EDE-4D6B-903B-3AF33DB00DF9}"
 	ProjectSection(ProjectDependencies) = postProject
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890} = {022B7A37-D570-4734-9DA4-AFBF3B20B890}
 		{11D96C40-9D50-463C-B78F-1F303E6425EE} = {11D96C40-9D50-463C-B78F-1F303E6425EE}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MNet", "MNet\MNet.vcxproj", "{11D96C40-9D50-463C-B78F-1F303E6425EE}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EasyBCrypt", "includes\EasyBCrypt\EasyBCrypt.vcxproj", "{022B7A37-D570-4734-9DA4-AFBF3B20B890}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,6 +51,14 @@ Global
 		{11D96C40-9D50-463C-B78F-1F303E6425EE}.Release|x64.Build.0 = Release|x64
 		{11D96C40-9D50-463C-B78F-1F303E6425EE}.Release|x86.ActiveCfg = Release|Win32
 		{11D96C40-9D50-463C-B78F-1F303E6425EE}.Release|x86.Build.0 = Release|Win32
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Debug|x64.ActiveCfg = Debug|x64
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Debug|x64.Build.0 = Debug|x64
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Debug|x86.ActiveCfg = Debug|Win32
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Debug|x86.Build.0 = Debug|Win32
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Release|x64.ActiveCfg = Release|x64
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Release|x64.Build.0 = Release|x64
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Release|x86.ActiveCfg = Release|Win32
+		{022B7A37-D570-4734-9DA4-AFBF3B20B890}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

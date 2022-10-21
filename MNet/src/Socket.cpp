@@ -2,17 +2,6 @@
 
 namespace MNet
 {
-	bool Socket::InitGetAddrInfo(PCSTR ip, const PCSTR port, struct addrinfo*& StrcConnect)
-	{
-		int status;
-		status = getaddrinfo(ip, port, &connType, &StrcConnect);
-		if (status != 0)
-		{
-			std::cerr << "Error at getaddrinfo." << std::endl;
-			return false;
-		}
-		return true;
-	}
 
 	Socket::Socket(int addressFamily, int sockType, int sockProto)
 	{
@@ -75,8 +64,10 @@ namespace MNet
 		int status;
 		addrinfo* connect;
 
-		if (not InitGetAddrInfo(ip, port, connect))
+		status = getaddrinfo(ip, port, &connType, &connect);
+		if (status != 0)
 		{
+			std::cerr << "Error at getaddrinfo." << std::endl;
 			return false;
 		}
 
@@ -118,8 +109,10 @@ namespace MNet
 		int status;
 		addrinfo* connect;
 
-		if (not InitGetAddrInfo(ip, port, connect))
+		status = getaddrinfo(ip, port, &connType, &connect);
+		if (status != 0)
 		{
+			std::cerr << "Error at getaddrinfo." << std::endl;
 			return false;
 		}
 

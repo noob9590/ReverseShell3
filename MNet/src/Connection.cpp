@@ -154,81 +154,74 @@ namespace MNet
 	}
 
 	// might break this function into several
-	bool Connection::SendFile(std::string& filename)
+	bool Connection::SendFile(const std::string& path, uintmax_t filesize)
 	{
-
+		Packet packet(PacketType::request);
 		std::fstream file;
-		file.open(filename, std::ios::in | std::ios::binary);
-
-		if (file.is_open())
+		file.open(path, std::ios::in | std::ios::binary);
+		if (not file.is_open())
 		{
-			uint32_t filesize = std::filesystem::file_size(filename);
-			uint32_t bytesRemaining = filesize;
-			
-			Packet packet(PacketType::FileTransmit);
-			packet.InsertString(filename);
-			packet.InsertInt(filesize);
+			std::cerr << "Error while trying to open the file." << std::endl;
+			return false;
+		}
+
+		do
+		{
+			uint32_t bytesToRead = min(BUFSIZE, filesize);
+			std::string fileBuffer;
+			fileBuffer.resize(bytesToRead);
+
+			file.read(&fileBuffer[0], bytesToRead);
+
+			packet.Clear(packet.GetPacketType());
+			packet << fileBuffer;
+			Crypt.EncryptPacket(packet);
 
 			if (not SendPacket(packet))
 			{
-				std::cerr << "Error at Send." << std::endl;
+				file.close();
 				return false;
 			}
 
-			std::vector<BYTE> fileBuffer;
+			filesize -= bytesToRead;
 
-			do 
-			{
-				uint32_t buffSize = min(BUFSIZE, bytesRemaining);
-				std::vector<BYTE> fileBuffer(buffSize, 0);
+		} while (filesize);
 
-				file.read(reinterpret_cast<char*>(fileBuffer.data()), buffSize);
-
-				packet.Clear();
-				packet.InsertBytes(fileBuffer);
-
-				if (not SendPacket(packet))
-				{
-					std::cerr << "Error at Send (file content)" << std::endl;
-					return false;
-				}
-
-				bytesRemaining -= buffSize;
-
-			} while (bytesRemaining);
-
-			file.close();
-		}
+		file.close();
 
 		return true;
 	}
 
-	bool Connection::RecvFile(std::string& filename, uint32_t filesize)
+	bool Connection::RecvFile(const std::string& path, uintmax_t bytesToRead)
 	{
-		uint32_t bytesRemaining = filesize;
+		Packet packet(PacketType::request);
 		std::fstream file;
-		file.open(filename, std::ios::out | std::ios::binary);
-		if (file.is_open())
+		file.open(path, std::ios::out | std::ios::binary);
+
+		if (not file.is_open())
 		{
-			do 
-			{
-				Packet packet(PacketType::Bytes);
-
-				if (not RecvPacket(packet))
-				{
-					std::cout << "Error at Recv (file content)" << std::endl;
-					return false;
-				}
-
-				std::vector<BYTE> fileBuffer = packet.ExtractBytes();
-				
-				file.write(reinterpret_cast<char*>(fileBuffer.data()), fileBuffer.size());
-
-				bytesRemaining -= fileBuffer.size();
-
-			} while (bytesRemaining);
+			std::cerr << "Error while trying to open the file." << std::endl;
+			return false;
 		}
 
+		do
+		{
+			if (not RecvPacket(packet))
+			{
+				file.close();
+				return false;
+			}
+			Crypt.DecryptPacket(packet);
+
+			std::string fileBuffer;
+			packet >> fileBuffer;
+
+			file.write(&fileBuffer[0], fileBuffer.size());
+			bytesToRead -= fileBuffer.size();
+
+		} while (bytesToRead);
+
+		file.close();
 		return true;
 	}
 

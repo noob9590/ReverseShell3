@@ -1,22 +1,34 @@
 #pragma once
-#include <MNet\Networking.h>
-#include <filesystem>
-#include <sstream>
+// custom
+#include <Networking.h>
 #include "Command.h"
+
+// win api
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+
+// std
+#include <exception>
+
+
+
 
 using namespace MNet;
 
-class Agent : public Client
+class Agent
 {
 private:
-
+	Socket connSocket;
+	Connection serverConn;
 	Command command;
-
-	void OnConnect(Connection connection) override;
+	bool OnConnect(Connection connection);
 
 public:
+	Agent() = default;
 
-	bool ShutDown() override;
-	bool Logic() override;
+	bool Connect(PCSTR ip, PCSTR port);
+	bool ShutDown();
+	bool Logic();
 };
 

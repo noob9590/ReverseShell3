@@ -1,17 +1,26 @@
 #pragma once
-#include <MNet\networking.h>
 #include <io.h>
+#include <Networking.h>
+#include <exception>
+
 
 using namespace MNet;
 
-class Stager : public Server
+class Stager
 {
 private:
-	void OnConnect(Connection newConnection) override;
-	PacketType MapPacketType(const std::string& cmd);
-
+	Socket connSocket;
+	Connection clientConn;
+	CommandStructure CommandParser(const std::string& input);
+	bool OnConnect(Connection newConnection);
+	
 public:
-	bool Logic(const std::string& command) override;
+	bool Listen(PCSTR port, PCSTR ip = nullptr);
+	bool ShutDown();
+	bool Logic(const std::string& command);
+	void PrintHelp();
+
+	
 	
 };
 

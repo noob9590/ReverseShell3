@@ -1,28 +1,37 @@
 #pragma once
+// windows api
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
-#include <windows.h>
 #include <ws2tcpip.h>
-#include <iostream>
-#include <optional>
-#include "SocketOption.h"
-#include "Connection.h"
+#include <windows.h>
 #pragma comment (lib, "Ws2_32.lib")
+
+// std
+#include <string>
+#include <optional>
+#include <iostream>
+
+// custom
+#include "Connection.h"
+
 
 namespace MNet
 {
+	enum SocketOption
+	{
+		TCP_NoDelay //TRUE = disable nagle's algorithm
+	};
+
 	class Socket
 	{
 	private:
 		SOCKET connSocket = INVALID_SOCKET;
-		addrinfo connType;
-
-		bool InitGetAddrInfo(PCSTR ip, PCSTR port, addrinfo*& StrcConnect);
+		addrinfo connType { };
 		bool SetSocketOptions(SocketOption option, BOOL value);
 
 	public:
 
-		Socket() { };
+		Socket() = default;
 		Socket(int addressFamily, int sockType, int sockProto);
 
 		bool Create(bool setBlocking = true);

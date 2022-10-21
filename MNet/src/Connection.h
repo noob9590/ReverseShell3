@@ -1,14 +1,22 @@
 #pragma once
 
+// win api
 #define WIN32_LEAN_AND_MEAN
-#include <ws2tcpip.h>
-#include <windows.h>
+
+#include <winsock2.h>
+#include <Ws2tcpip.h>
+#include <stdio.h>
+#pragma comment(lib, "Ws2_32.lib")
+
+// std
 #include <string>
 #include <iostream>
-#include <cassert>
 #include <filesystem>
 #include <fstream>
+
+// custom
 #include "Packet.h"
+#include "Crypter.h"
 
 #define BUFSIZE 8192
 
@@ -24,7 +32,8 @@ namespace MNet
 
 	public:
 
-		Connection() {};
+		Crypter Crypt;
+		Connection() = default;
 		Connection(SOCKET connSocket, std::string ip, std::string port);
 		SOCKET GetClientSocket() const;
 		const std::string& GetIp() const;
@@ -37,8 +46,8 @@ namespace MNet
 		bool SendPacket(Packet packet);
 		bool RecvPacket(Packet& packet);
 		
-		bool SendFile(std::string& filename);
-		bool RecvFile(std::string& filename, uint32_t filesize);
+		bool SendFile(const std::string& path, uintmax_t filesize);
+		bool RecvFile(const std::string& path, uintmax_t bytesToRead);
 		bool Close();
 		
 	};

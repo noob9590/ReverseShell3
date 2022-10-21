@@ -1,24 +1,24 @@
 #include "Command.h"
 
 
-bool Command::PipeInit(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR)
+bool Command::InitPipe(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR)
 {
 	SECURITY_ATTRIBUTES saAttr;
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
 	saAttr.bInheritHandle = TRUE;
 	saAttr.lpSecurityDescriptor = NULL;
 
-	if (not CreatePipe(&h_OUT_RD, &h_OUT_WR, &saAttr, 0))
+	if (not ::CreatePipe(&h_OUT_RD, &h_OUT_WR, &saAttr, 0))
 	{
 		std::cerr << "Error at CreatePipe" << std::endl;
 		return false;
 	}
 
-	if (not SetHandleInformation(h_OUT_RD, HANDLE_FLAG_INHERIT, 0))
+	if (not ::SetHandleInformation(h_OUT_RD, HANDLE_FLAG_INHERIT, 0))
 	{
 		std::cerr << "Error at SetHandleInformation" << std::endl;
-		CloseHandle(h_OUT_RD);
-		CloseHandle(h_OUT_WR);
+		::CloseHandle(h_OUT_RD);
+		::CloseHandle(h_OUT_WR);
 
 		return false;
 	}
@@ -26,7 +26,7 @@ bool Command::PipeInit(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR)
 	return true;
 }
 
-bool Command::Pipe2Buffer(HANDLE& h_OUT_RD)
+bool Command::FromPipeToBuffer(HANDLE& h_OUT_RD)
 {
 	DWORD dwRead;
 	DWORD dwAvailBytes = 0;
@@ -37,13 +37,13 @@ bool Command::Pipe2Buffer(HANDLE& h_OUT_RD)
 
 	for (;;)
 	{
-		bSuccess = ReadFile(h_OUT_RD, output.data() + dwReadTotal, dwAvailBytes, &dwRead, NULL);
+		bSuccess = ::ReadFile(h_OUT_RD, output.data() + dwReadTotal, dwAvailBytes, &dwRead, NULL);
 		dwReadTotal += dwRead;
 
 		if (not bSuccess)
 			break;
 
-		bSuccess = PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
+		bSuccess = ::PeekNamedPipe(h_OUT_RD, NULL, 0, NULL, &dwAvailBytes, NULL);
 
 		if (not bSuccess)
 			break;
@@ -60,7 +60,7 @@ bool Command::Execute(std::string cmd)
 	HANDLE h_OUT_RD;
 	HANDLE h_OUT_WR;
 
-	if (not PipeInit(h_OUT_RD, h_OUT_WR))
+	if (not InitPipe(h_OUT_RD, h_OUT_WR))
 	{
 		std::cerr << "Error at InitializePromptPipe." << std::endl;
 		return false;
@@ -81,8 +81,8 @@ bool Command::Execute(std::string cmd)
 	
 	cmd = "/c " + cmd;
 
-	bSuccess = CreateProcessA(
-		"C:\\Windows\\System32\\cmd.exe",
+	bSuccess = ::CreateProcessA(
+		(LPCSTR)"C:\\Windows\\System32\\cmd.exe",
 		(LPSTR)cmd.c_str(),
 		NULL,
 		NULL,
@@ -100,18 +100,19 @@ bool Command::Execute(std::string cmd)
 	}
 
 	// first close the handle to notify ReadFile.
-	CloseHandle(h_OUT_WR);
+	::CloseHandle(h_OUT_WR);
 
-	if (not Pipe2Buffer(h_OUT_RD))
+	if (not FromPipeToBuffer(h_OUT_RD))
 	{
 		std::cerr << "Error at CmdOutput2Buffer." << std::endl;
 		return false;
 	}
 
-	WaitForSingleObject(pi.hProcess, INFINITE);
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
-	CloseHandle(h_OUT_RD);
+	// cleanup
+	::WaitForSingleObject(pi.hProcess, INFINITE);
+	::CloseHandle(pi.hProcess);
+	::CloseHandle(pi.hThread);
+	::CloseHandle(h_OUT_RD);
 
 	return true;
 }
@@ -149,7 +150,7 @@ void Command::TakeScreenshot(std::vector<BYTE>& imageBytes)
 
 	IStream* stream = NULL;
 	// create stream object
-	HRESULT hr = CreateStreamOnHGlobal(0, TRUE, &stream);
+	HRESULT hr = ::CreateStreamOnHGlobal(0, TRUE, &stream);
 	CImage image;
 	ULARGE_INTEGER liSize;
 
@@ -158,7 +159,7 @@ void Command::TakeScreenshot(std::vector<BYTE>& imageBytes)
 	// create a compatible bitmap and select it in the memory DC
 	HDC hDCMem = ::CreateCompatibleDC(hDCScreen);
 	int width = ::GetDeviceCaps(hDCScreen, HORZRES); // get screen width
-	int height = GetDeviceCaps(hDCScreen, VERTRES); // get screen height
+	int height = ::GetDeviceCaps(hDCScreen, VERTRES); // get screen height
 	// bit-blit from screen to memory device context
 	HBITMAP hBitmap = ::CreateCompatibleBitmap(hDCScreen, width, height);
 	HBITMAP hBmpOld = (HBITMAP)::SelectObject(hDCMem, hBitmap);

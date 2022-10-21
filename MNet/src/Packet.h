@@ -1,13 +1,23 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <winsock2.h>
-#include <windows.h>
-#include <vector>
+// windows api
+#include <windows.h> // the vector will be changed to char them this include will be removed
+
+// std
 #include <string>
-#include "PacketType.h"
+#include <vector>
+
+// custom
+#include "PacketException.h"
 
 namespace MNet
 {
+	enum PacketType : uint16_t
+	{
+		Invalid,
+		request,
+		response
+	};
+
 	class Packet
 	{
 	private:
@@ -35,6 +45,15 @@ namespace MNet
 
 		void InsertBytes(std::vector<BYTE> bytes);
 		std::vector<BYTE> ExtractBytes();
+
+		Packet& operator << (uint32_t data);
+		Packet& operator >> (uint32_t& data);
+
+		Packet& operator << (const std::string& str);
+		Packet& operator >> (std::string& str);
+
+		Packet& operator << (const std::vector<BYTE>& bytes);
+		Packet& operator >> (std::vector<BYTE>& bytes);
 
 	};
 }

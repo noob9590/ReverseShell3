@@ -1,33 +1,47 @@
-#include <mnet\networking.h>
-#include <iostream>
-#include <string>
 #include "Stager.h"
 
 using namespace MNet;
 
 int main()
 {
+
 	if (not WSA::StartUp())
 	{
 		std::cout << "Failed to start up Winsock." << std::endl;
 	}
-		
-	std::string command;
+	
+	std::string input;
 	Stager TCPStager;
-	if (not TCPStager.Initialize("4000"))
+	if (not TCPStager.Listen("4000"))
 	{
 		std::cout << "Server initialization failed." << std::endl;
 		ExitProcess(1);
 	}
 
+	// print help when loading the stager for the first time.
+	TCPStager.PrintHelp();
+	bool _exit = true;
+
 	do
 	{
-		command.clear();
+		input.clear();
 
 		std::cout << ">> ";
-		std::getline(std::cin, command);
+		std::getline(std::cin, input);
 
-	} while (TCPStager.Logic(command));
+		if (input == "")
+			continue;
+
+		else if (input == "--quit")
+			break;
+
+		else if (input == "--help")
+			TCPStager.PrintHelp();
+
+		else
+			_exit = TCPStager.Logic(input);
+
+	} while (_exit);
 
 	if (not TCPStager.ShutDown())
 	{
@@ -35,43 +49,5 @@ int main()
 		ExitProcess(1);
 	}
 	WSA::ShutDown();
+
 }
-
-
-
-//#include <atomic>
-//#include <thread>
-//#include <iostream>
-//#include <chrono>
-//
-//void ReadCin(std::atomic<bool>& run)
-//{
-//    std::string buffer;
-//
-//    while (run.load())
-//    {
-//        std::cin >> buffer;
-//        if (buffer == "Quit")
-//        {
-//            run.store(false);
-//        }
-//    }
-//}
-//
-//int main()
-//{
-//    std::atomic<bool> run(true);
-//    std::thread cinThread(ReadCin, std::ref(run));
-//
-//    while (run.load())
-//    {
-//        std::cout << "IN LOOP" << std::endl;
-//        std::this_thread::sleep_for(std::chrono::seconds(3));
-//        // main loop
-//    }
-//
-//    run.store(false);
-//    cinThread.join();
-//
-//    return 0;
-//}

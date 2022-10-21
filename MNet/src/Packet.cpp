@@ -50,6 +50,9 @@ namespace MNet
 
 	int Packet::ExtractInt()
 	{
+		if (sizeof(uint32_t) + packetOffset > buffer.size())
+			throw PacketException("[Packet::ExtractInt()] - exceeded the buffer size.");
+
 		uint32_t data = *reinterpret_cast<uint32_t*>(buffer.data() + packetOffset);
 		data = ntohl(data);
 		packetOffset += sizeof(uint32_t);
@@ -65,6 +68,10 @@ namespace MNet
 	std::string Packet::ExtractString()
 	{
 		uint32_t strSize = ExtractInt();
+
+		if (strSize + packetOffset > buffer.size())
+			throw PacketException("[Packet::ExtractString()] - exceeded the buffer size.");
+
 		std::string str;
 		str.resize(strSize);
 		str.assign((char*)buffer.data() + packetOffset, strSize);
@@ -82,11 +89,49 @@ namespace MNet
 	{
 		std::vector<BYTE> bytes;
 		uint32_t bytesBufferSize = ExtractInt();
+
+		if (bytesBufferSize + packetOffset > buffer.size())
+			throw PacketException("[Packet::ExtractBytes()] - exceeded the buffer size.");
+
 		bytes.reserve(bytesBufferSize);
 		bytes.insert(bytes.begin(), &buffer[0] + packetOffset, &buffer[0] + packetOffset + bytesBufferSize);
 		packetOffset += bytesBufferSize;
 		return bytes;
 	}
+	
+	Packet& Packet::operator << (uint32_t data)
+	{
+		InsertInt(data);
+		return *this;
+	}
 
+	Packet& Packet::operator >> (uint32_t& data)
+	{
+		data = ExtractInt();
+		return *this;
+	}
 
+	Packet& Packet::operator << (const std::string& str)
+	{
+		InsertString(str);
+		return *this;
+	}
+
+	Packet& Packet::operator >> (std::string& str)
+	{
+		str = ExtractString();
+		return *this;
+	}
+
+	Packet& Packet::operator << (const std::vector<BYTE>& bytes)
+	{
+		InsertBytes(bytes);
+		return *this;
+	}
+
+	Packet& Packet::operator >> (std::vector<BYTE>& bytes)
+	{
+		bytes = ExtractBytes();
+		return *this;
+	}
 }
