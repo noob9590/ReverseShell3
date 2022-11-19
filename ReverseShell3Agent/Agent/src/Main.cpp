@@ -4,29 +4,39 @@ using namespace MNet;
 
 int main()
 {
+
 	if (not WSA::StartUp())
 	{
-		std::cout << "Failed to start up Winsock." << std::endl;
-		ExitProcess(1);
+		ExitProcess(EXIT_FAILURE);
 	}
-
-	std::cout << "[+] Winsock successfully initialized." << std::endl;
 
 	Agent agent;
-	if (not agent.Connect("127.0.0.1", "4000"))
+	M_Result res{};
+	bool isConnected = false;
+
+	while (not isConnected)
 	{
-		std::cerr << "Failed to establish connection." << std::endl;
-		ExitProcess(1);
+		res = agent.Connect("", "");
+
+		if (res == M_Success)
+			isConnected = true;
+
+		else if (res == M_GenericError)
+			break;
+
+		else
+			Sleep(10000);
 	}
 
-	while (agent.Logic());
-
-	if (not agent.ShutDown())
+	while (isConnected)
 	{
-		std::cerr << "Error at ShutDown" << std::endl;
-		ExitProcess(1);
+		res = agent.Logic();
+		
+		if (res != M_Success)
+			break;
 	}
 
 	// cleanup
+	agent.ShutDown();
 	WSA::ShutDown();
 }

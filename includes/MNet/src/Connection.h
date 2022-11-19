@@ -17,6 +17,7 @@
 // custom
 #include "Packet.h"
 #include "Crypter.h"
+#include "MResult.h"
 
 #define BUFSIZE 8192
 
@@ -39,16 +40,16 @@ namespace MNet
 		const std::string& GetIp() const;
 		const std::string& GetPort() const;
 
-		bool Send(const void* data, int size, int& bytesSent);
-		bool SendAll(void* data, int dataSize);
-		bool Recv(void* buff, int buffSize, int& bytesReceived);
-		bool RecvAll(void* data, int dataSize);
-		bool SendPacket(Packet packet);
-		bool RecvPacket(Packet& packet);
+		M_Result Send(const void* data, int size, int& bytesSent);
+		M_Result SendAll(void* data, int dataSize);
+		M_Result Recv(void* buff, int buffSize, int& bytesReceived);
+		M_Result RecvAll(void* data, int dataSize);
+		M_Result SendPacket(Packet packet);
+		M_Result RecvPacket(Packet& packet);
 		
-		bool SendFile(const std::string& path, uintmax_t filesize);
-		bool RecvFile(const std::string& path, uintmax_t bytesToRead);
-		bool Close();
+		M_Result SendFile(const std::string& path, uintmax_t filesize);
+		M_Result RecvFile(const std::string& path, uintmax_t bytesToRead);
+		void Close();
 		
 	};
 }

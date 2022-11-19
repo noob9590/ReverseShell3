@@ -13,6 +13,7 @@
 
 // custom
 #include "Connection.h"
+#include "MResult.h"
 
 
 namespace MNet
@@ -27,20 +28,20 @@ namespace MNet
 	private:
 		SOCKET connSocket = INVALID_SOCKET;
 		addrinfo connType { };
-		bool SetSocketOptions(SocketOption option, BOOL value);
+		M_Result SetSocketOptions(SocketOption option, BOOL value);
 
 	public:
 
 		Socket() = default;
 		Socket(int addressFamily, int sockType, int sockProto);
 
-		bool Create(bool setBlocking = true);
-		bool Close();
-		bool Bind(PCSTR port, PCSTR ip = NULL);
-		bool SetBlocking(bool isBlocking);
+		M_Result Create(bool setBlocking = true);
+		void Close();
+		M_Result Bind(PCSTR port, PCSTR ip = NULL);
+		M_Result SetBlocking(bool isBlocking);
 
 		std::optional<std::tuple<SOCKET, std::string, std::string>> Accept();
-		bool Connect(PCSTR ip, PCSTR port);
+		M_Result Connect(PCSTR ip, PCSTR port);
 
 		SOCKET GetSocketHandle() const;
 	};

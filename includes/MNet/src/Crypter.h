@@ -2,7 +2,7 @@
 #include <type_traits>
 #include <cassert>
 #include "Packet.h"
-#include "..\..\includes\EasyBCrypt\EasyBCrypt.h"
+#include "..\..\EasyBCrypt\EasyBCrypt.h"
 #include "CrypterException.h"
 
 namespace MNet 

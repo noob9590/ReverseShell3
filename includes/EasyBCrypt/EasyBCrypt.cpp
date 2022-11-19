@@ -354,15 +354,15 @@ namespace EasyBCrypt
 		WCHAR chainingMode[32] = { 0 };
 
 		// pblob alias
-		PBYTE _pbBlob = const_cast<PBYTE>(&pbBlob[0]);
+		PBYTE _pbBlob = const_cast<PBYTE>(pbBlob.data());
 		DWORD _cbBlob = static_cast<DWORD>(pbBlob.size());
 
 		// plaintext alias
-		PBYTE _pbPlaintext = reinterpret_cast<PBYTE>(const_cast<char*>(&plaintext[0]));
+		PBYTE _pbPlaintext = reinterpret_cast<PBYTE>(const_cast<char*>(plaintext.data()));
 		DWORD _cbPlaintext = static_cast<DWORD>(plaintext.size());
 
 		// IV alias
-		PBYTE _pbIV = const_cast<PBYTE>(&IV[0]);
+		PBYTE _pbIV = const_cast<PBYTE>(IV.data());
 		DWORD _cbIV = static_cast<DWORD>(IV.size());
 
 		nt_status = BCryptImportKey(
@@ -602,15 +602,15 @@ namespace EasyBCrypt
 		WCHAR chainingMode[32] = { 0 };
 
 		// pblob alias
-		PBYTE _pbBlob = const_cast<PBYTE>(&pbBlob[0]);
+		PBYTE _pbBlob = const_cast<PBYTE>(pbBlob.data());
 		DWORD _cbBlob = static_cast<DWORD>(pbBlob.size());
 
 		// ciphertext alias
-		PBYTE _pbCiphertext = reinterpret_cast<PBYTE>(const_cast<PBYTE>(&ciphertext[0]));
+		PBYTE _pbCiphertext = reinterpret_cast<PBYTE>(const_cast<PBYTE>(ciphertext.data()));
 		DWORD _cbCiphertext = static_cast<DWORD>(ciphertext.size());
 
 		// IV alias
-		PBYTE _pbIV = const_cast<PBYTE>(&IV[0]);
+		PBYTE _pbIV = const_cast<PBYTE>(IV.data());
 		DWORD _cbIV = static_cast<DWORD>(IV.size());
 
 		nt_status = BCryptImportKey(

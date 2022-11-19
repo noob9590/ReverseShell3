@@ -1,6 +1,0 @@
-﻿  AESCipher.cpp
-  base64.cpp
-  EBcryptEncrypt.cpp
-C:\Users\Homie\source\repos\ReverseShell3\includes\EasyBCrypt\EBcryptEncrypt.cpp(169,72): warning C4267: 'initializing': conversion from 'size_t' to 'DWORD', possible loss of data
-  Generating Code...
-  EasyBCrypt.vcxproj -> C:\Users\Homie\source\repos\ReverseShell3\x64\Debug\EasyBCrypt.lib

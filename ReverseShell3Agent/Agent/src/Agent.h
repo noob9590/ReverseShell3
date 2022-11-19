@@ -1,6 +1,6 @@
 #pragma once
 // custom
-#include <Networking.h>
+#include "src\Networking.h"
 #include "Command.h"
 
 // win api
@@ -10,6 +10,7 @@
 
 // std
 #include <exception>
+#include <iomanip>
 
 
 
@@ -22,13 +23,13 @@ private:
 	Socket connSocket;
 	Connection serverConn;
 	Command command;
-	bool OnConnect(Connection connection);
+	M_Result OnConnect(Connection& connection);
 
 public:
 	Agent() = default;
 
-	bool Connect(PCSTR ip, PCSTR port);
-	bool ShutDown();
-	bool Logic();
+	M_Result Connect(PCSTR ip, PCSTR port);
+	void ShutDown();
+	M_Result Logic();
 };
 

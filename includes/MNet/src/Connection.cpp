@@ -25,48 +25,27 @@ namespace MNet
 		return port;
 	}
 
-	bool Connection::Close()
+	void Connection::Close()
 	{
-		if (connSocket == INVALID_SOCKET)
+		if (connSocket != INVALID_SOCKET)
 		{
-			throw std::runtime_error("Try to close INVALID_SOCKET");
-			return false;
+			closesocket(connSocket);
+			connSocket = INVALID_SOCKET;
+			Crypt.Terminate();
 		}
-		if (closesocket(connSocket) != 0)
-		{
-			std::cerr << "Error at closesocket." << std::endl;
-			return false;
-		}
-
-		connSocket = INVALID_SOCKET;
-		return true;
 	}
 
-	bool Connection::Send(const void* buff, int buffSize, int& bytesSent)
+	M_Result Connection::Send(const void* buff, int buffSize, int& bytesSent)
 	{
 		bytesSent = send(connSocket, (const char*)buff, buffSize, 0);
 		if (bytesSent == SOCKET_ERROR)
 		{
-			std::cerr << "Error at send." << std::endl;
-			return false;
+			return M_GenericWarning;
 		}
-		return true;
+		return M_Success;
 	}
 
-	bool Connection::Recv(void* buff, int buffSize, int& bytesReceived)
-	{
-		bytesReceived = recv(connSocket, (char*)buff, buffSize, 0);
-		if (bytesReceived <= 0)
-		{
-			if (bytesReceived == 0)
-				std::cerr << "Error at recv." << std::endl;
-
-			return false;
-		}
-		return true;
-	}
-
-	bool Connection::SendAll(void* data, int dataSize)
+	M_Result Connection::SendAll(void* data, int dataSize)
 	{
 		int totalBytesSent = 0;
 		while (totalBytesSent < dataSize)
@@ -75,19 +54,29 @@ namespace MNet
 			int bytesRemaining = dataSize - totalBytesSent;
 			char* bufferOffset = (char*)data + totalBytesSent;
 
-			if (not Send(bufferOffset, bytesRemaining, bytesSent))
+			if (Send(bufferOffset, bytesRemaining, bytesSent) == M_GenericWarning)
 			{
-				std::cerr << "Error at Send." << std::endl;
-				return false;
+				return M_GenericWarning;
 			}
 
 			totalBytesSent += bytesSent;
 		}
 
-		return true;
+		return M_Success;
 	}
 
-	bool Connection::RecvAll(void* data, int dataSize)
+	M_Result Connection::Recv(void* buff, int buffSize, int& bytesReceived)
+	{
+		bytesReceived = recv(connSocket, (char*)buff, buffSize, 0);
+		if (bytesReceived <= 0)
+		{
+			return M_GenericWarning;
+		}
+
+		return M_Success;
+	}
+
+	M_Result Connection::RecvAll(void* data, int dataSize)
 	{
 		int totalBytesReceived = 0;
 		while (totalBytesReceived < dataSize)
@@ -96,65 +85,65 @@ namespace MNet
 			int bytesRemaining = dataSize - totalBytesReceived;
 			char* bufferOffset = (char*)data + totalBytesReceived;
 
-			if (not Recv(bufferOffset, bytesRemaining, bytesReceived))
+			if (Recv(bufferOffset, bytesRemaining, bytesReceived) == M_GenericWarning)
 			{
-				std::cerr << "Error at Recv" << std::endl;
-				return false;
+				if (bytesReceived == 0)
+					return M_GenericWarning;
+
+				int err = GetLastError();
+
+				if (err == WSAEWOULDBLOCK)
+					continue;
+
+				else
+					return M_GenericWarning;
 			}
 
 			totalBytesReceived += bytesReceived;
 		}
 
-		return true;
+		return M_Success;
 	}
 
-	bool Connection::SendPacket(Packet packet)
+	M_Result Connection::SendPacket(Packet packet)
 	{
 		uint32_t encodedPacketSize = htonl(packet.PacketSize());
-		if (not SendAll(&encodedPacketSize, sizeof(uint32_t)))
+		if (SendAll(&encodedPacketSize, sizeof(uint32_t)) == M_GenericWarning)
 		{
-			int error = WSAGetLastError();
-			std::cerr << "Error at SendAll (packet size)" << std::endl;
-			return false;
+			return M_GenericWarning;
 		}
 
-		if (not SendAll(packet.buffer.data(), packet.PacketSize()))
+		if (SendAll(packet.buffer.data(), packet.PacketSize()) == M_GenericWarning)
 		{
-			int error = WSAGetLastError();
-			std::cerr << "Error at SendAll (packet content)" << std::endl;
-			return false;
+			return M_GenericWarning;
 		}
 
-		return true;
+		return M_Success;
 	}
 
-	bool Connection::RecvPacket(Packet& packet)
+	M_Result Connection::RecvPacket(Packet& packet)
 	{
 		packet.Clear(packet.GetPacketType());
 
 		uint32_t encodedPacketSize = 0;
-		if (not RecvAll(&encodedPacketSize, sizeof(uint32_t)))
+		if (RecvAll(&encodedPacketSize, sizeof(uint32_t)) == M_GenericWarning)
 		{
-			int error = WSAGetLastError();
-			std::cerr << "Error at RecvAll (packet size)" << std::endl;
-			return false;
+			return M_GenericWarning;
 		}
 
 		uint32_t bufferSize = ntohl(encodedPacketSize);
 		packet.buffer.resize(bufferSize);
 
-		if (not RecvAll(packet.buffer.data(), bufferSize))
+		if (RecvAll(packet.buffer.data(), bufferSize) == M_GenericWarning)
 		{
-			int error = WSAGetLastError();
-			std::cerr << "Error at RecvAll (packet content)" << std::endl;
-			return false;
+			return M_GenericWarning;
 		}
 
-		return true;
+		return M_Success;
 	}
 
 	// might break this function into several
-	bool Connection::SendFile(const std::string& path, uintmax_t filesize)
+	M_Result Connection::SendFile(const std::string& path, uintmax_t filesize)
 	{
 		Packet packet(PacketType::request);
 		std::fstream file;
@@ -162,7 +151,7 @@ namespace MNet
 		if (not file.is_open())
 		{
 			std::cerr << "Error while trying to open the file." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
 		do
@@ -177,10 +166,11 @@ namespace MNet
 			packet << fileBuffer;
 			Crypt.EncryptPacket(packet);
 
-			if (not SendPacket(packet))
+			M_Result res = SendPacket(packet);
+			if (res != M_Success)
 			{
 				file.close();
-				return false;
+				return res;
 			}
 
 			filesize -= bytesToRead;
@@ -189,10 +179,10 @@ namespace MNet
 
 		file.close();
 
-		return true;
+		return M_Success;
 	}
 
-	bool Connection::RecvFile(const std::string& path, uintmax_t bytesToRead)
+	M_Result Connection::RecvFile(const std::string& path, uintmax_t bytesToRead)
 	{
 		Packet packet(PacketType::request);
 		std::fstream file;
@@ -201,15 +191,16 @@ namespace MNet
 		if (not file.is_open())
 		{
 			std::cerr << "Error while trying to open the file." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
 		do
 		{
-			if (not RecvPacket(packet))
+			M_Result res = RecvPacket(packet);
+			if (res != M_Success)
 			{
 				file.close();
-				return false;
+				return res;
 			}
 			Crypt.DecryptPacket(packet);
 
@@ -222,7 +213,7 @@ namespace MNet
 		} while (bytesToRead);
 
 		file.close();
-		return true;
+		return M_Success;
 	}
 
 }

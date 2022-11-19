@@ -17,49 +17,42 @@ namespace MNet
 		return connSocket;
 	}
 
-	bool Socket::Create(bool setBlocking)
+	M_Result Socket::Create(bool setBlocking)
 	{
 		connSocket = WSASocket(connType.ai_family, connType.ai_socktype, connType.ai_protocol, NULL, 0, 0);
 		if (connSocket == INVALID_SOCKET)
 		{
 			std::cerr << "Error at WSASocket." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
-		if (not SetBlocking(setBlocking))
+		if (SetBlocking(setBlocking) != M_Success)
 		{
 			std::cerr << "Error at SetBlocking." << std::endl;
 			Close(); // Close the socket here since we are not closing the socket when this method fails
-			return false;
+			return M_GenericError;
 		}
 
-		if (not SetSocketOptions(SocketOption::TCP_NoDelay, TRUE))
+		if (SetSocketOptions(SocketOption::TCP_NoDelay, TRUE) != M_Success)
 		{
 			std::cerr << "Error at SetSocketOptions." << std::endl;
 			Close(); // Close the socket here since we are not closing the socket when this method fails
-			return false;
+			return M_GenericError;
 		}
 
-		return true;
+		return M_Success;
 	}
 
-	bool Socket::Close()
+	void Socket::Close()
 	{
-		if (connSocket == INVALID_SOCKET)
+		if (connSocket != INVALID_SOCKET)
 		{
-			throw std::runtime_error("Try to close INVALID_SOCKET");
-		}
-		if (closesocket(connSocket) != 0)
-		{
-			std::cerr << "Error closesocket." << std::endl;
-			return false;
-		}
-
-		connSocket = INVALID_SOCKET;
-		return true;
+			closesocket(connSocket);
+			connSocket = INVALID_SOCKET;
+		}		
 	}
 
-	bool Socket::Connect(PCSTR ip, PCSTR port)
+	M_Result Socket::Connect(PCSTR ip, PCSTR port)
 	{
 		int status;
 		addrinfo* connect;
@@ -68,7 +61,7 @@ namespace MNet
 		if (status != 0)
 		{
 			std::cerr << "Error at getaddrinfo." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
 		status = WSAConnect(connSocket, connect->ai_addr, (int)connect->ai_addrlen, 0, 0, 0, 0);
@@ -78,12 +71,12 @@ namespace MNet
 		if (status == SOCKET_ERROR)
 		{
 			std::cerr << "Error at WSAConnect." << std::endl;
-			return false;
+			return M_GenericError;
 		}
-		return true;
+		return M_Success;
 	}
 
-	bool Socket::SetSocketOptions(SocketOption option, BOOL value)
+	M_Result Socket::SetSocketOptions(SocketOption option, BOOL value)
 	{
 		int status = 0;
 		switch (option)
@@ -93,18 +86,18 @@ namespace MNet
 			break;
 
 		default:
-			return false;
+			return M_GenericError;
 		}
 
 		if (status != 0)
 		{
 			std::cerr << "Error at setsockopt." << std::endl;
-			return false;
+			return M_GenericError;
 		}
-		return true;
+		return M_Success;
 	}
 
-	bool Socket::Bind(PCSTR port, PCSTR ip)
+	M_Result Socket::Bind(PCSTR port, PCSTR ip)
 	{
 		int status;
 		addrinfo* connect;
@@ -113,7 +106,7 @@ namespace MNet
 		if (status != 0)
 		{
 			std::cerr << "Error at getaddrinfo." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
 		status = bind(connSocket, connect->ai_addr, (int)connect->ai_addrlen);
@@ -123,17 +116,17 @@ namespace MNet
 		if (status == SOCKET_ERROR)
 		{
 			std::cerr << "Error at bind." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
 		status = listen(connSocket, SOMAXCONN);
 		if (status == INVALID_SOCKET)
 		{
 			std::cerr << "Error at listen." << std::endl;
-			return false;
+			return M_GenericError;
 		}
 
-		return true;
+		return M_Success;
 	}
 
 	std::optional<std::tuple<SOCKET, std::string, std::string>> Socket::Accept()
@@ -156,7 +149,7 @@ namespace MNet
 		return { {cliSocket, std::string(ip), std::to_string(port) } };
 	}
 
-	bool Socket::SetBlocking(bool isBlocking)
+	M_Result Socket::SetBlocking(bool isBlocking)
 	{
 		unsigned long blocking = 0;
 		unsigned long nonBlocking = 1;
@@ -164,9 +157,9 @@ namespace MNet
 		if (status == SOCKET_ERROR)
 		{
 			std::cerr << "Error at ioctlsocket." << std::endl;
-			return false;
+			return M_GenericError;
 		}
-		return true;
+		return M_Success;
 
 	}
 

@@ -17,7 +17,7 @@ class Command
 	//       create method to return current path
 private:
 	std::vector<char> output;
-	bool FromPipeToBuffer(HANDLE& h_OUT_RD);
+	bool PipeToBuffer(HANDLE& h_OUT_RD);
 	bool InitPipe(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR);
 
 public:

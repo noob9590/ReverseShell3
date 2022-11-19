@@ -1,6 +1,5 @@
 #include "Command.h"
 
-
 bool Command::InitPipe(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR)
 {
 	SECURITY_ATTRIBUTES saAttr;
@@ -26,7 +25,7 @@ bool Command::InitPipe(HANDLE& h_OUT_RD, HANDLE& h_OUT_WR)
 	return true;
 }
 
-bool Command::FromPipeToBuffer(HANDLE& h_OUT_RD)
+bool Command::PipeToBuffer(HANDLE& h_OUT_RD)
 {
 	DWORD dwRead;
 	DWORD dwAvailBytes = 0;
@@ -102,7 +101,7 @@ bool Command::Execute(std::string cmd)
 	// first close the handle to notify ReadFile.
 	::CloseHandle(h_OUT_WR);
 
-	if (not FromPipeToBuffer(h_OUT_RD))
+	if (not PipeToBuffer(h_OUT_RD))
 	{
 		std::cerr << "Error at CmdOutput2Buffer." << std::endl;
 		return false;

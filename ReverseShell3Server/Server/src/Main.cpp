@@ -7,47 +7,75 @@ int main()
 
 	if (not WSA::StartUp())
 	{
-		std::cout << "Failed to start up Winsock." << std::endl;
+		ExitProcess(EXIT_FAILURE);
 	}
-	
+
 	std::string input;
 	Stager TCPStager;
-	if (not TCPStager.Listen("4000"))
+	if (TCPStager.Listen("") != M_Success)
 	{
-		std::cout << "Server initialization failed." << std::endl;
-		ExitProcess(1);
+		WSA::ShutDown();
+		ExitProcess(EXIT_FAILURE);
 	}
 
 	// print help when loading the stager for the first time.
 	TCPStager.PrintHelp();
-	bool _exit = true;
+	TCPStager.Run();
 
-	do
+	while (true)
 	{
+
 		input.clear();
 
 		std::cout << ">> ";
 		std::getline(std::cin, input);
 
 		if (input == "")
+		{
 			continue;
-
+		}
+			
 		else if (input == "--quit")
+		{
 			break;
-
+		}
+	
 		else if (input == "--help")
+		{
 			TCPStager.PrintHelp();
+		}
+			
 
+		else if (input == "--listagents")
+		{
+			TCPStager.PrintAgents();
+		}
+			
+		else if (input.starts_with("--setagent"))
+		{
+			TCPStager.SetCurrentAgent(input);
+		}
+			
 		else
-			_exit = TCPStager.Logic(input);
+		{
+			if (TCPStager.GetCurrentAgent())
+			{
+				M_Result res = TCPStager.Logic(input);
 
-	} while (_exit);
+				if (res == M_GenericError)
+					break;
+					
+			}
 
-	if (not TCPStager.ShutDown())
-	{
-		std::cout << "Server shutdown failed." << std::endl;
-		ExitProcess(1);
+			else
+			{
+				std::cout << ">> [!] No agent is active." << std::endl;
+			}		
+		}
+
 	}
+
+	TCPStager.ShutDown();
 	WSA::ShutDown();
 
 }
