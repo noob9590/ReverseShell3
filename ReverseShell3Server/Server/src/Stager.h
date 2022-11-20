@@ -30,5 +30,6 @@ public:
 	void PrintAgents();
 	void SetCurrentAgent(const std::string& input);
 	Connection* const GetCurrentAgent() const;
+	std::atomic<bool> isMainThreadAlive{ 1 };
 };
 

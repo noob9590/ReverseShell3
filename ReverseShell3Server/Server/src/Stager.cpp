@@ -26,6 +26,14 @@ M_Result Stager::Listen(PCSTR port, PCSTR ip)
 
 void Stager::ShutDown()
 {
+    // terminate the the ConnectionsManager
+    isMainThreadAlive = 0;
+    // wait until the connectionsManager thread is finished
+    connectionsThread.join();
+    // close all open sockets
+    for (auto& conn : connections)
+        conn.second.Close();
+    // close the server socket
     connSocket.Close();
 }
 
@@ -195,7 +203,7 @@ void Stager::ConnectionsManager()
 
     connectionsEvents.push_back(listenSocketFD);
 
-    while (true)
+    while (isMainThreadAlive)
     {
         std::vector<WSAPOLLFD> c_connectionsEvents = connectionsEvents;
 

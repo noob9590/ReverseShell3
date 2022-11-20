@@ -22,7 +22,7 @@ int main()
 	TCPStager.PrintHelp();
 	TCPStager.Run();
 
-	while (true)
+	while (TCPStager.isMainThreadAlive)
 	{
 
 		input.clear();
@@ -77,5 +77,7 @@ int main()
 
 	TCPStager.ShutDown();
 	WSA::ShutDown();
+
+	return 0;
 
 }
